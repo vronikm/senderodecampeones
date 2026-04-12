@@ -84,7 +84,7 @@
     <head>
         <meta charset="UTF-8">
         <title>Carnet de Alumno</title>
-        <link rel="icon" type="image/png" href="<?php echo APP_URL; ?>app/views/dist/img/Logos/1104523691001_2.png">
+        <link rel="icon" type="image/png" href="<?php echo APP_URL; ?>app/views/dist/img/Logos/LogoSC.png">
         <link rel="stylesheet" href="<?php echo APP_URL; ?>app/views/dist/css/carnet_style.css?v=1.1.5">
         <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -164,7 +164,7 @@
                         </span>
                     </p>
                     <p><strong>Sede:</strong> <?= $sede['sede_nombre'] ?></p>
-                    <p style="font-size: 11px;">championsclubdefutbol@gmail.com</br> 0993911650</p>
+                    <p style="font-size: 11px;">senderodecampeones@outlook.com</br> 0986402966</p>
                 </div>
                 <div class="foto">
                     <img src="<?php echo $foto; ?>" alt="Foto alumno">

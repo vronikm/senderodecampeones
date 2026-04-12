@@ -211,11 +211,11 @@
               <span class="badge-pct pct-amarillo d-none d-md-inline"><i class="fas fa-circle mr-1"></i> 50–79%</span>
               <span class="badge-pct pct-rojo d-none d-md-inline"><i class="fas fa-circle mr-1"></i> &lt; 50%</span>
               <div style="width:1px; height:20px; background:#dee2e6;" class="d-none d-md-inline-block mx-1"></div>
-              <button onclick="exportarTablaAExcel('tablaDatos','IDVLoja-Estadisticas-<?php echo date('Y-m'); ?>')"
+              <button onclick="exportarTablaAExcel('tablaDatos','SC-Estadisticas-<?php echo date('Y-m'); ?>')"
                       class="boton-icono"
                       style="background-image: url('<?php echo APP_URL; ?>app/views/imagenes/iconos/Excel.png');"
                       title="Exportar a Excel"></button>
-              <button onclick="exportarTablaAPDF('tablaDatos','IDVLoja-Estadisticas-<?php echo date('Y-m'); ?>')"
+              <button onclick="exportarTablaAPDF('tablaDatos','SC-Estadisticas-<?php echo date('Y-m'); ?>')"
                       class="boton-icono"
                       style="background-image: url('<?php echo APP_URL; ?>app/views/imagenes/iconos/Pdf.png');"
                       title="Exportar a PDF"></button>

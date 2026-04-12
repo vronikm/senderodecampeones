@@ -28,7 +28,7 @@
 	<meta http-equiv="X-UA-Compatible" content="IE=edge">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<title><?php echo APP_NAME; ?> | Cobranza</title>
-
+	<link rel="icon" type="image/png" href="<?php echo APP_URL; ?>app/views/dist/img/Logos/LogoSC.png">
 	<!-- Google Font: Source Sans Pro -->
 	<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:300,400,400i,700&display=fallback">
 	<!-- Font Awesome -->
@@ -95,7 +95,7 @@
 							<div class="invoice p-3 mb-3">							
 								<div class="col-sm-11 invoice-col">									
 									<address class="text-center"><br>
-										<strong class="profile-username">CHAMPIONS CLUB DE FÚTBOL</strong><br><br>											
+										<strong class="profile-username">SENDERO DE CAMPEONES</strong><br><br>											
 										<div class="row">
 											<div class="row">
 												<div class="col-4"></div>														

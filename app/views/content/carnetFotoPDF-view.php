@@ -251,7 +251,7 @@ $infoY += 3.5;
 $pdf->SetFont('Arial', '', 7);
 $pdf->SetTextColor(100, 100, 100);
 $pdf->SetXY($infoX, $infoY);
-$pdf->Cell(40, 2, 'championsclubdefutbol@gmail.com', 0, 0, 'L');
+$pdf->Cell(40, 2, 'senderodecampeones@outlook.com', 0, 0, 'L');
 $infoY += 3;
 $pdf->SetXY($infoX, $infoY);
 $pdf->Cell(40, 2, '0993911650', 0, 0, 'L');
