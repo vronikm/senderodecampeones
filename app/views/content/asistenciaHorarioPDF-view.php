@@ -48,7 +48,7 @@
 	    $ProfesorPDF=$ProfesorPDF->fetch(); 
     }
    											
-    $data="Horario ".$horario_nombre. " | "."\nIDV Loja\n".$sede["sede_telefono"]."\n".$sede["sede_email"];
+    $data="Horario ".$horario_nombre. " | "."\nSendero de Campeones\n".$sede["sede_telefono"]."\n".$sede["sede_email"];
 
     $image = $generator->render_image($symbology, $data, $optionsQR);
     imagejpeg($image, $filename);
@@ -71,8 +71,8 @@
 
     $pdf->SetLineWidth(0.1); $pdf->Rect(10, 10, 190, 40, "D"); $x=15; $y=13;
   
-    $pdf->SetXY( $x, $y ); $pdf->SetFont( "Arial", "B", 11 ); $pdf->Cell( 260, 8, "ESCUELA INDEPENDIENTE", 0, 0, 'C'); $y+=5;
-    $pdf->SetXY( $x, $y ); $pdf->SetFont( "Arial", "B", 11 ); $pdf->Cell( 260, 8, "DEL VALLE ".$sede['sede_nombre'], 0, 0, 'C'); $y+=5;
+    $pdf->SetXY( $x, $y ); $pdf->SetFont( "Arial", "B", 11 ); $pdf->Cell( 260, 8, "ESCUELA SENDERO", 0, 0, 'C'); $y+=5;
+    $pdf->SetXY( $x, $y ); $pdf->SetFont( "Arial", "B", 11 ); $pdf->Cell( 260, 8, "DE CAMPEONES ".$sede['sede_nombre'], 0, 0, 'C'); $y+=5;
 
     $pdf->SetXY( $x+8, $y+10); $pdf->SetFont( "Arial", "", 9 ); $pdf->Cell(16, 10, mb_convert_encoding("Dirección:", 'ISO-8859-1', 'UTF-8'), 0, 0, 'C');
     $pdf->SetXY( $x-10, $y+10); $pdf->SetFont( "Arial", "", 9 ); $pdf->Cell( 135, 10, mb_convert_encoding($sede["sede_direccion"], 'ISO-8859-1', 'UTF-8'), 0, 0, 'C'); $y+=5;

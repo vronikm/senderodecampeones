@@ -44,7 +44,7 @@
 		. ' – ' . date('d', strtotime($le_fecha_fin))   . ' ' . $meses[(int)date('n', strtotime($le_fecha_fin))]
 		. ' ' . date('Y', strtotime($le_fecha_fin));
 
-	$nombreArchivo = 'IDVLoja-IngresosMora-' . $le_fecha_inicio . '_' . $le_fecha_fin;
+	$nombreArchivo = 'SenderoDeCampeones-IngresosMora-' . $le_fecha_inicio . '_' . $le_fecha_fin;
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -53,7 +53,7 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo APP_NAME; ?> | Ingresos y mora por sede</title>
-    <link rel="icon" type="image/png" href="<?php echo APP_URL; ?>app/views/dist/img/Logos/1104523691001_2.png">
+    <link rel="icon" type="image/png" href="<?php echo APP_URL; ?>app/views/dist/img/Logos/LogoSC.png">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:300,400,400i,700&display=fallback">
     <link rel="stylesheet" href="<?php echo APP_URL; ?>app/views/dist/plugins/fontawesome-free/css/all.min.css">
     <link rel="stylesheet" href="<?php echo APP_URL; ?>app/views/dist/plugins/datatables-bs4/css/dataTables.bootstrap4.min.css">

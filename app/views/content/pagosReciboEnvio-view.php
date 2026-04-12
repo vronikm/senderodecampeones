@@ -60,7 +60,7 @@
 
         $pdf->SetLineWidth(0.1); $pdf->Rect(10, 10, 190, 40, "D"); $x=15; $y=13;       		
 
-		$pdf->SetXY( $x, $y ); $pdf->SetFont( "Arial", "B", 11 ); $pdf->Cell( 260, 8, "CHAMPIONS C.F. ".$nombre_sede, 0, 0, 'C'); $y+=5;
+		$pdf->SetXY( $x, $y ); $pdf->SetFont( "Arial", "B", 11 ); $pdf->Cell( 260, 8, "SENDERO DE CAMPEONES ".$nombre_sede, 0, 0, 'C'); $y+=5;
 		$pdf->SetXY( $x, $y ); $pdf->SetFont( "Arial", "B", 11 ); $pdf->Cell( 260, 8, "", 0, 0, 'C'); $y+=17;
 
 		$pdf->SetXY( $x, $y); $pdf->SetFont( "Arial", "", 9 ); $pdf->Cell(100, 8, mb_convert_encoding("Dirección: ".$sede["sede_direccion"], 'ISO-8859-1', 'UTF-8'), 0, 0, 'C'); $y+=5;
@@ -152,11 +152,11 @@
     
     NOTA: Este correo electrónico servirá como recibo oficial de su pago.
     
-    Champions Club de Fútbol ".$nombre_sede;
+    SENDERO DE CAMPEONES ".strtoupper($nombre_sede);
     
 	$message = mb_convert_encoding($message, 'ISO-8859-1', 'UTF-8');
 
-	$from = "championsclubdefutbol@gmail.com";
+	$from = "senderodecampeones@outlook.com";
 	$headers = "From: " . $from;
 
 	// Ruta del archivo adjunto

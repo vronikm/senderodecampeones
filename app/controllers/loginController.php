@@ -21,7 +21,7 @@
 				session_set_cookie_params([
 					'lifetime' => 3600,
 					'path' => '/',
-					'domain' => 'idvloja.digitech.com.ec',
+					'domain' => 'senderodecampeones.digitech.com.ec',
 					'secure' => true,
 					'httponly' => true,
 					'samesite' => 'Strict'
