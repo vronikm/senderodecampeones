@@ -132,7 +132,7 @@ if(file_exists($imgDerecha)){
 // ============================================
 $logoPath = "./app/views/imagenes/fotos/sedes/" . $sede['sede_foto'];
 if(file_exists($logoPath)){
-    $pdf->Image($logoPath, $x + 40, $y + 2, 18, 17);
+    $pdf->Image($logoPath, $x + 40, $y + 2, 17, 19);
 }
 
 // Código QR
