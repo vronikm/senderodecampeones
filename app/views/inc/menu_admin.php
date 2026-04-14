@@ -6,6 +6,13 @@
               </li>
 
               <li class="nav-item">
+                <a href="<?php echo APP_URL."inscripcionEnlace/" ?>" class="nav-link <?php if ($url[0]=='inscripcionEnlace') echo 'active'; else echo ''; ?>">
+                  <i class="nav-icon fab fa-whatsapp" style="color:#25D366;"></i>
+                  <p>Inscripción Online</p>
+                </a>
+              </li>
+
+              <li class="nav-item">
                 <a href="<?php echo APP_URL."representanteList/" ?>" class="nav-link <?php if ($url[0]=='representanteList') echo 'active'; else echo ''; ?>">
                   <i class="nav-icon fas fa-diagnoses text-info"></i>
                   <p>Representantes</p>
