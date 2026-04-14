@@ -76,7 +76,7 @@
         }
     }
 
-    $titulo = mb_convert_encoding("ESCUELA SENDERO DE CAMPEONES ".$sede_nombre, 'ISO-8859-1', 'UTF-8');
+    $titulo = mb_convert_encoding("FORMATIVA SENDERO DE CAMPEONES ".$sede_nombre, 'ISO-8859-1', 'UTF-8');
 
     $pdf = new PDF($titulo, $logo);
     $pdf->AddPage();
@@ -96,12 +96,12 @@
     
     $pdf->SetFont('Arial', '', 9);
     // Agregar contenido del formulario
-    $text2 = mb_convert_encoding("En Escuela SENDERO DE CAMPEONES, $sede_nombre, recolectamos y tratamos los datos personales de nuestros alumnos y sus representantes legales con las siguientes finalidades:", 'ISO-8859-1', 'UTF-8');
+    $text2 = mb_convert_encoding("En FORMATIVA SENDERO DE CAMPEONES, $sede_nombre, recolectamos y tratamos los datos personales de nuestros alumnos y sus representantes legales con las siguientes finalidades:", 'ISO-8859-1', 'UTF-8');
        
     // Escribir el texto en el PDF
     $pdf->MultiCell(0,5, $text2);
 
-    $pdf->AddBullet(mb_convert_encoding('Gestión administrativa y operativa de la inscripción, pagos mensuales y participación del alumno en las actividades de la Escuela SENDERO DE CAMPEONES '.$sede_nombre.'.', 'ISO-8859-1', 'UTF-8'),5);
+    $pdf->AddBullet(mb_convert_encoding('Gestión administrativa y operativa de la inscripción, pagos mensuales y participación del alumno en las actividades de la FORMATIVA SENDERO DE CAMPEONES '.$sede_nombre.'.', 'ISO-8859-1', 'UTF-8'),5);
     $pdf->AddBullet(mb_convert_encoding('Comunicación de eventos, horarios de entrenamiento, fechas de torneos, actividades y todo tipo de información relevante.', 'ISO-8859-1', 'UTF-8'),5);
     $pdf->AddBullet(mb_convert_encoding('Atención de situaciones de emergencia, incluyendo acceso a información de contacto y datos médicos básicos proporcionados por el representante legal.', 'ISO-8859-1', 'UTF-8'),5);
     $pdf->AddBullet(mb_convert_encoding('Registro de contenido audiovisual (fotos y videos) para la promoción de actividades en redes sociales y material institucional, siempre con el consentimiento del representante del alumno.', 'ISO-8859-1', 'UTF-8'),5);
@@ -117,7 +117,7 @@
     $pdf->AddBullet(mb_convert_encoding('Contacto de emergencia del alumno: Celular, nombre, parentesco.', 'ISO-8859-1', 'UTF-8'),5);
     $pdf->AddBullet(mb_convert_encoding('Datos del representante: Tipo de identificación, número de identificación, apellido paterno, apellido materno, primer nombre, segundo nombre, parentesco, sexo, dirección, correo, celular y si requiere factura.', 'ISO-8859-1', 'UTF-8'),5);
     $pdf->AddBullet(mb_convert_encoding('Información médica: Tipo de sangre, peso, talla, enfermedad diagnosticada, medicamentos, alergia a medicamentos, alergia a objetos, cirugías, dispone de carnet de vacunación COVID y vacunación habitual.', 'ISO-8859-1', 'UTF-8'),5);
-    $pdf->AddBullet(mb_convert_encoding('Contenido audiovisual (fotos y videos): Se podrán tomar y usar imágenes de los alumnos en actividades propias de la escuela con fines promocionales o informativos.', 'ISO-8859-1', 'UTF-8'),5);
+    $pdf->AddBullet(mb_convert_encoding('Contenido audiovisual (fotos y videos): Se podrán tomar y usar imágenes de los alumnos en actividades propias de FORMATIVA SENDERO DE CAMPEONES con fines promocionales o informativos.', 'ISO-8859-1', 'UTF-8'),5);
     
     $pdf->SetFont('Arial', 'B', 10);
     $pdf->Cell(0, 10, '4. Derechos del Titular de los Datos', 0, 2, 'L');
@@ -130,14 +130,14 @@
     $pdf->Cell(0, 10, '5. Seguridad de los Datos', 0, 2, 'L');
    
     $pdf->SetFont('Arial', '', 9);
-    $text5 = mb_convert_encoding("La escuela adopta medidas de seguridad razonables y adecuadas para proteger los datos personales contra el acceso no autorizado, pérdida, destrucción, alteración o uso indebido.", 'ISO-8859-1', 'UTF-8');
+    $text5 = mb_convert_encoding("FORMATIVA SENDERO DE CAMPEONES adopta medidas de seguridad razonables y adecuadas para proteger los datos personales contra el acceso no autorizado, pérdida, destrucción, alteración o uso indebido.", 'ISO-8859-1', 'UTF-8');
     $pdf->MultiCell(0,5, $text5);
 
     $pdf->SetFont('Arial', 'B', 10);
     $pdf->Cell(0, 10, '6. Consentimiento', 0, 2, 'L');
 
     $pdf->SetFont('Arial', '', 9);
-    $text6 = mb_convert_encoding("Declaro que he leído y comprendido los términos de este consentimiento y autorizo a la Escuela de Fútbol SENDERO DE CAMPEONES $sede_nombre a recolectar y tratar los datos personales mencionados, en los términos señalados en este documento.", 'ISO-8859-1', 'UTF-8');
+    $text6 = mb_convert_encoding("Declaro que he leído y comprendido los términos de este consentimiento y autorizo a FORMATIVA SENDERO DE CAMPEONES $sede_nombre a recolectar y tratar los datos personales mencionados, en los términos señalados en este documento.", 'ISO-8859-1', 'UTF-8');
     $pdf->MultiCell(0,5, $text6);
 
     $pdf->SetFont('Arial', '', 9);
@@ -146,7 +146,7 @@
 
     $pdf->SetFont('Arial', '', 9);
     $pdf->Cell(0, 5, '', 0, 2, 'L');
-    $text7 = mb_convert_encoding("Sí, autorizo el uso de imágenes del alumno (fotos y videos) en las redes sociales y material promocional de la Escuela de Fútbol SENDERO DE CAMPEONES $sede_nombre.\n Sí, consiento el tratamiento de los datos personales del alumno con las finalidades descritas.", 'ISO-8859-1', 'UTF-8');
+    $text7 = mb_convert_encoding("Sí, autorizo el uso de imágenes del alumno (fotos y videos) en las redes sociales y material promocional de FORMATIVA SENDERO DE CAMPEONES $sede_nombre.\n Sí, consiento el tratamiento de los datos personales del alumno con las finalidades descritas.", 'ISO-8859-1', 'UTF-8');
     $pdf->MultiCell(0,5, $text7);
 
     $pdf->SetFont('Arial', '', 9);

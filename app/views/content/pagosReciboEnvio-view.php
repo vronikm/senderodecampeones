@@ -131,7 +131,7 @@
         $pdf->SetXY( 120, 112); $pdf->SetFont( "Arial", "B", 8 ); $pdf->Cell( 65, 8, "FIRMA AUTORIZADA", 0, 0, 'C');    
 
         $pdf->Image(APP_URL.$filename, 165, 89, 23, 23);
-        $pdf->Image(APP_URL.'app/views/imagenes/rubricas/FirmaChampions.jpg', 110, 89, 47, 23);
+        $pdf->Image(APP_URL.'app/views/imagenes/rubricas/RubricaSC.jpg', 110, 89, 47, 23);
         
         unlink($filename);
 

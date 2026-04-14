@@ -96,7 +96,7 @@
 							<div class="invoice p-3 mb-3">							
 								<div class="col-sm-11 invoice-col">									
 									<address class="text-center"><br>
-										<strong class="profile-username">SENDERO DE CAMPEONES</strong><br><br>											
+										<strong class="profile-username">FORMATIVA SENDERO DE CAMPEONES</strong><br><br>											
 										<div class="row">
 											<div class="row">
 												<div class="col-4"></div>														

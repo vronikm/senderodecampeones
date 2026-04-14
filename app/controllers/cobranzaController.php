@@ -88,7 +88,7 @@
 						<td>'.$rows['ALUMNO'].'</td>
 						<td>'.$rows['TOTAL_MORA'].'</td>
 						<td>                            
-							<a href="https://wa.me/593'.$celular.'?text=Estimado representante, El Club Formativo Especializado Sendero de Campeones le recuerda que a la presente fecha usted mantiene un saldo pendiente de pensiones, por el valor de USD $'.$rows["TOTAL_MORA"].', agradecemos su gentileza en realizar el pago correspondiente." target="_blank" class="btn float-right btn-actualizar btn-xs" style="margin-right: 5px;">Notificar</a>										
+							<a href="https://wa.me/593'.$celular.'?text=Estimado representante, FORMATIVA SENDERO DE CAMPEONES le recuerda que a la presente fecha usted mantiene un saldo pendiente de pensiones, por el valor de USD $'.$rows["TOTAL_MORA"].', agradecemos su gentileza en realizar el pago correspondiente." target="_blank" class="btn float-right btn-actualizar btn-xs" style="margin-right: 5px;">Notificar</a>										
                             <a href="'.APP_URL.'cobranzaDetallePension/'.$rows['repre_id'].'/" class="btn float-right btn-ver btn-xs" style="margin-right: 5px;">Detalle</a>
 						</td>
 					</tr>';	
@@ -179,7 +179,7 @@
 						<td>'.$rows['ALUMNO'].'</td>
 						<td>'.$rows['TOTAL_MORA'].'</td>
 						<td>                            
-							<a href="https://wa.me/593'.$celular.'?text=Estimado representante, Escuela Sendero de Campeones le recuerda que a la presente fecha usted mantiene un saldo pendiente de pensiones, por el valor de USD $'.$rows["TOTAL_MORA"].', agradecemos su gentileza en realizar el pago correspondiente." target="_blank" class="btn float-right btn-actualizar btn-xs" style="margin-right: 5px;">Notificar</a>										
+							<a href="https://wa.me/593'.$celular.'?text=Estimado representante, Formativa Sendero de Campeones le recuerda que a la presente fecha usted mantiene un saldo pendiente de pensiones, por el valor de USD $'.$rows["TOTAL_MORA"].', agradecemos su gentileza en realizar el pago correspondiente." target="_blank" class="btn float-right btn-actualizar btn-xs" style="margin-right: 5px;">Notificar</a>										
                             <a href="'.APP_URL.'cobranzaDetallePension/'.$rows['repre_id'].'/" class="btn float-right btn-ver btn-xs" style="margin-right: 5px;">Detalle</a>
 						</td>
 					</tr>';	
@@ -243,7 +243,7 @@
 						<td>'.$rows['ALUMNO'].'</td>
 						<td>'.$rows['TOTAL_MORA'].'</td>
 						<td>                            
-							<a href="https://wa.me/593'.$celular.'?text=Estimado representante, Escuela Sendero de Campeones le recuerda que a la presente fecha usted mantiene un saldo pendiente de uniformes, por el valor de USD $'.$rows["TOTAL_MORA"].', agradecemos su gentileza en realizar el pago correspondiente." target="_blank" class="btn float-right btn-actualizar btn-xs" style="margin-right: 5px;">Notificar</a>										
+							<a href="https://wa.me/593'.$celular.'?text=Estimado representante, Formativa Sendero de Campeones le recuerda que a la presente fecha usted mantiene un saldo pendiente de uniformes, por el valor de USD $'.$rows["TOTAL_MORA"].', agradecemos su gentileza en realizar el pago correspondiente." target="_blank" class="btn float-right btn-actualizar btn-xs" style="margin-right: 5px;">Notificar</a>										
                             <a href="'.APP_URL.'cobranzaDetalleUniforme/'.$rows['repre_id'].'/" class="btn float-right btn-ver btn-xs" style="margin-right: 5px;">Detalle</a>
 						</td>
 					</tr>';	
