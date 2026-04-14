@@ -106,7 +106,7 @@
 								<div class="row invoice-info">
 									<div class="col-sm-6 invoice-col">										
 										<address class="text-center">												
-											<img src="<?php echo APP_URL.'app/views/imagenes/fotos/sedes/'.$sede['sede_foto'] ?>" style="width: 180px; height: 100px;"/>
+											<img src="<?php echo APP_URL.'app/views/imagenes/fotos/sedes/'.$sede['sede_foto'] ?>" style="width: 100px; height: 100px;"/>
 											<br>Dirección: <?php echo $sede["sede_direccion"]; ?><br>
 											Celular: <?php echo $sede["sede_telefono"]." - ".$sede["sede_nombre"]; ?> - ECUADOR								
 										</address>
@@ -114,7 +114,7 @@
 									<!-- /.col -->
 									<div class="col-sm-6 invoice-col">									
 										<address class="text-center">	
-											<strong class="profile-username">FORMATIVA SENDERO DE CAMPEONES <?php echo $sede["sede_nombre"]; ?></strong><br>									
+											<strong class="profile-username">FORMATIVA SENDERO DE CAMPEONES <br> <?php echo strtoupper($sede["sede_nombre"]); ?></strong><br>									
 											<div class="row">
 												<div class="col-12 table-responsive">
 													<div class="row">

@@ -66,29 +66,28 @@
     // logo : 80 de largo por 55 de alto
     //,,ancho,
 
-    $pdf->Image(APP_URL.'app/views/imagenes/fotos/sedes/'.$sede['sede_foto'], 34, 10, 47, 26);
-    //$pdf->Image(APP_URL.'app/views/dist/img/Logos/login.jpg', 165, 88, 25, 25);
+    $pdf->Image(APP_URL.'app/views/imagenes/fotos/sedes/'.$sede['sede_foto'], 54, 10, 26, 26);
 
     $pdf->SetLineWidth(0.1); $pdf->Rect(10, 10, 190, 40, "D"); $x=15; $y=13;
   
-    $pdf->SetXY( $x, $y ); $pdf->SetFont( "Arial", "B", 11 ); $pdf->Cell( 260, 8, "FORMATIVA SENDERO", 0, 0, 'C'); $y+=5;
-    $pdf->SetXY( $x, $y ); $pdf->SetFont( "Arial", "B", 11 ); $pdf->Cell( 260, 8, "DE CAMPEONES ".$sede['sede_nombre'], 0, 0, 'C'); $y+=5;
+    $pdf->SetXY( $x, $y ); $pdf->SetFont( "Arial", "B", 11 ); $pdf->Cell( 260, 8, "FORMATIVA SENDERO DE CAMPEONES", 0, 0, 'C'); $y+=5;
+    $pdf->SetXY( $x, $y ); $pdf->SetFont( "Arial", "B", 11 ); $pdf->Cell( 260, 8, $sede['sede_nombre'], 0, 0, 'C'); $y+=5;
 
-    $pdf->SetXY( $x+8, $y+10); $pdf->SetFont( "Arial", "", 9 ); $pdf->Cell(16, 10, mb_convert_encoding("Dirección:", 'ISO-8859-1', 'UTF-8'), 0, 0, 'C');
-    $pdf->SetXY( $x-10, $y+10); $pdf->SetFont( "Arial", "", 9 ); $pdf->Cell( 135, 10, mb_convert_encoding($sede["sede_direccion"], 'ISO-8859-1', 'UTF-8'), 0, 0, 'C'); $y+=5;
-    $pdf->SetXY( $x, $y+10); $pdf->SetFont( "Arial", "", 9 ); $pdf->Cell(35, 10, mb_convert_encoding("Celular:", 'ISO-8859-1', 'UTF-8'), 0, 0, 'C');
-    $pdf->SetXY( $x+10, $y+10); $pdf->SetFont( "Arial", "", 9 ); $pdf->Cell( 90, 10, mb_convert_encoding($sede["sede_telefono"]." ".$sede['sede_nombre']."-ECUADOR", 'ISO-8859-1', 'UTF-8'), 0, 0,'C');
+    $pdf->SetXY( $x+8, $y+10); $pdf->SetFont( "Arial", "", 9 ); $pdf->Cell(5, 10, mb_convert_encoding("Dirección:", 'ISO-8859-1', 'UTF-8'), 0, 0, 'C');
+    $pdf->SetXY( $x, $y+10); $pdf->SetFont( "Arial", "", 9 ); $pdf->Cell( 123, 10, mb_convert_encoding($sede["sede_direccion"], 'ISO-8859-1', 'UTF-8'), 0, 0, 'C'); $y+=5;
+    $pdf->SetXY( $x, $y+10); $pdf->SetFont( "Arial", "", 9 ); $pdf->Cell(85, 10, mb_convert_encoding("Celular:", 'ISO-8859-1', 'UTF-8'), 0, 0, 'C');
+    $pdf->SetXY( $x+10, $y+10); $pdf->SetFont( "Arial", "", 9 ); $pdf->Cell( 95, 10, mb_convert_encoding($sede["sede_telefono"], 'ISO-8859-1', 'UTF-8'), 0, 0,'C');
 
-    $pdf->SetLineWidth(0.1); $pdf->Rect(120, 35, 60, 10, "D");
-    $pdf->Line(120, 38, 180, 38);
+    $pdf->SetLineWidth(0.1); $pdf->Rect(125, 35, 60, 10, "D");
+    $pdf->Line(125, 38, 185, 38);
     $pdf->SetXY( 120, 32.5); $pdf->SetFont( "Arial", "", 7 ); $pdf->Cell( 19, 2, mb_convert_encoding("Fecha ", 'ISO-8859-1', 'UTF-8'), 0, 0, 'C');
-    $pdf->SetXY( 120, 32.5); $pdf->SetFont( "Arial", "", 5 ); $pdf->Cell( 20, 8, "DIA", 0, 0, 'C');
-    $pdf->SetXY( 140, 32.5); $pdf->SetFont( "Arial", "", 5 ); $pdf->Cell( 20, 8, "MES", 0, 0, 'C');
-    $pdf->SetXY( 160, 32.5); $pdf->SetFont( "Arial", "", 5 ); $pdf->Cell( 20, 8, mb_convert_encoding("AÑO", 'ISO-8859-1', 'UTF-8'), 0, 0, 'C');
+    $pdf->SetXY( 125, 32.5); $pdf->SetFont( "Arial", "", 5 ); $pdf->Cell( 20, 8, "DIA", 0, 0, 'C');
+    $pdf->SetXY( 145, 32.5); $pdf->SetFont( "Arial", "", 5 ); $pdf->Cell( 20, 8, "MES", 0, 0, 'C');
+    $pdf->SetXY( 165, 32.5); $pdf->SetFont( "Arial", "", 5 ); $pdf->Cell( 20, 8, mb_convert_encoding("AÑO", 'ISO-8859-1', 'UTF-8'), 0, 0, 'C');
     //FECHA VARIABLE
-    $pdf->SetXY( 120, 38); $pdf->SetFont( "Arial", "", 9 ); $pdf->Cell( 20, 8, date('d', strtotime(date('Y-m-d'))), 0, 0, 'C');
-    $pdf->SetXY( 140, 38); $pdf->SetFont( "Arial", "", 9 ); $pdf->Cell( 20, 8,date('m', strtotime(date('Y-m-d'))), 0, 0, 'C');
-    $pdf->SetXY( 160, 38); $pdf->SetFont( "Arial", "", 9 ); $pdf->Cell( 20, 8, date('Y', strtotime(date('Y-m-d'))), 0, 0, 'C');
+    $pdf->SetXY( 125, 38); $pdf->SetFont( "Arial", "", 9 ); $pdf->Cell( 20, 8, date('d', strtotime(date('Y-m-d'))), 0, 0, 'C');
+    $pdf->SetXY( 145, 38); $pdf->SetFont( "Arial", "", 9 ); $pdf->Cell( 20, 8,date('m', strtotime(date('Y-m-d'))), 0, 0, 'C');
+    $pdf->SetXY( 165, 38); $pdf->SetFont( "Arial", "", 9 ); $pdf->Cell( 20, 8, date('Y', strtotime(date('Y-m-d'))), 0, 0, 'C');
   
     $pdf->Line(140, 35, 140, 45);
     $pdf->Line(160, 35, 160, 45);
