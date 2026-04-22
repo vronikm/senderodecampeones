@@ -49,22 +49,22 @@
 									END Condicion
 								FROM sujeto_alumno
 								INNER JOIN (        
-									SELECT pago_alumnoid, MAX(FechaPension) FechaUltPension, MAX(pago_estado) Estado
-									FROM (
-										SELECT pago_fecha as FechaPension, pago_estado, pago_alumnoid                               
-											FROM alumno_pago 
-											WHERE pago_fecha >= DATE_FORMAT(CURDATE(), '%Y-%m-01')
-												and pago_estado NOT IN ('E', 'J')
-									) AS Pagos
-									GROUP BY pago_alumnoid
-
-									union all 
-									
-									SELECT descuento_alumnoid, descuento_fecha, descuento_estado
-											from alumno_pago_descuento
-											where descuento_rubroid = 'DBC'
-													and descuento_valor = 0
-													and descuento_estado = 'S'
+									 (
+                SELECT pago_alumnoid, MAX(FechaPension) FechaUltPension, MAX(pago_estado) Estado
+                FROM (
+                        SELECT pago_fecha as FechaPension, pago_estado, pago_alumnoid                               
+                                FROM alumno_pago 
+                                WHERE pago_fecha >= DATE_FORMAT(CURDATE(), '%Y-%m-01')
+                                        and pago_estado NOT IN ('E', 'J')
+                ) AS Pagos
+                GROUP BY pago_alumnoid
+                )
+                UNION                
+                SELECT descuento_alumnoid, DATE_FORMAT(CURDATE(), '%Y-%m-05') FechaPago, 'Al dìa' as Estado
+                                from alumno_pago_descuento
+                                where descuento_rubroid = 'DBC'
+                                                and descuento_valor = 0
+                                                and descuento_estado = 'S'     
 								) EstadoPagos ON pago_alumnoid = alumno_id
 								WHERE alumno_estado = 'A'
 								ORDER BY alumno_apellidopaterno, alumno_apellidomaterno";
@@ -152,7 +152,13 @@
 														FROM alumno_pago 
 														WHERE pago_alumnoid = $alumnoid
 															AND pago_estado NOT IN ('J','E')
-														GROUP BY pago_estado, pago_fecha) as subquery) AS Total";	
+														GROUP BY pago_estado, pago_fecha) as subquery) AS Total
+												UNION
+												SELECT descuento_alumnoid, DATE_FORMAT(CURDATE(), '%Y-%m-01') FechaPago, 'Al dìa' as Estado
+                                from alumno_pago_descuento
+                                where descuento_rubroid = 'DBC'
+                                                and descuento_valor = 0
+                                                and descuento_estado = 'S'";	
 			$datos = $this->ejecutarConsulta($consulta_datos);
 			return $datos;
 		}
