@@ -57,6 +57,14 @@
 												and pago_estado NOT IN ('E', 'J')
 									) AS Pagos
 									GROUP BY pago_alumnoid
+
+									union all 
+									
+									SELECT descuento_alumnoid, descuento_fecha, descuento_estado
+											from alumno_pago_descuento
+											where descuento_rubroid = 'DBC'
+													and descuento_valor = 0
+													and descuento_estado = 'S'
 								) EstadoPagos ON pago_alumnoid = alumno_id
 								WHERE alumno_estado = 'A'
 								ORDER BY alumno_apellidopaterno, alumno_apellidomaterno";
