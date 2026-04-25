@@ -327,7 +327,10 @@
 															<div class="input-group-prepend">
 																<span class="input-group-text"><i class="far fa-calendar-alt"></i></span>
 															</div>
-															<input type="date" class="form-control" name="alumno_fechanacimiento" value="<?php echo $datos['alumno_fechanacimiento']; ?>" required>
+															<input type="date" class="form-control" id="alumno_fechanacimiento" name="alumno_fechanacimiento" value="<?php echo $datos['alumno_fechanacimiento']; ?>" required>
+																														<div class="input-group-append">
+																<span id="edad_texto" class="input-group-text" style="min-width:50px; font-weight:bold; color:#007bff;">--</span>
+															</div>
 														</div>
 													<!-- /.input group -->
 													</div>												
@@ -339,7 +342,11 @@
 															<div class="input-group-prepend">
 																<span class="input-group-text"><i class="far fa-calendar-alt"></i></span>
 															</div>
-															<input type="date" class="form-control" name="alumno_fechaingreso" value="<?php echo $datos['alumno_fechaingreso']; ?>" required>
+															<input type="date" class="form-control" id="alumno_fechaingreso" name="alumno_fechaingreso" value="<?php echo $datos['alumno_fechaingreso']; ?>" required>
+															<div class="input-group-prepend">
+																<span id="ingreso_texto" class="input-group-text" style="font-weight:bold; color:#007bff;">--</span>
+															</div>
+
 														</div>
 													<!-- /.input group -->
 													</div>								
@@ -743,7 +750,61 @@
 		// BS-Stepper Init
 		document.addEventListener('DOMContentLoaded', function () {
 			window.stepper = new Stepper(document.querySelector('.bs-stepper'))
-		});
+		})
+	</script>
+
+	<script>
+		function calcularEdad(fecha) {
+			if (!fecha) return "";
+			const fechaNacimiento = new Date(fecha);
+			if (isNaN(fechaNacimiento)) return "";
+			
+			const hoy = new Date();
+			let edad = hoy.getFullYear() - fechaNacimiento.getFullYear();
+			const mes = hoy.getMonth() - fechaNacimiento.getMonth();
+			if (mes < 0 || (mes === 0 && hoy.getDate() < fechaNacimiento.getDate())) {
+				edad--;
+			}
+			return `${edad} años`;
+		}
+
+		function actualizarEdad() {
+			const fecha = document.getElementById("alumno_fechanacimiento").value;
+			document.getElementById("edad_texto").textContent = calcularEdad(fecha) || "--";
+		}
+
+		// Calcular edad al cargar la página
+		window.addEventListener("DOMContentLoaded", actualizarEdad);
+
+		// Recalcular edad cuando cambia la fecha
+		document.getElementById("alumno_fechanacimiento").addEventListener("input", actualizarEdad);
+
+		//-------------------------------Fecha ingreso ---------------------------------//
+
+		function calcularFechaIngreso(fecha) {
+			if (!fecha) return "";
+			const fechaIngreso = new Date(fecha);
+			if (isNaN(fechaIngreso)) return "";
+			
+			const hoy = new Date();
+			let edad = hoy.getFullYear() - fechaIngreso.getFullYear();
+			const mes = hoy.getMonth() - fechaIngreso.getMonth();
+			if (mes < 0 || (mes === 0 && hoy.getDate() < fechaIngreso.getDate())) {
+				edad--;
+			}
+			return `${edad} años`;
+		}
+
+		function actualizarIngreso() {
+			const fecha = document.getElementById("alumno_fechaingreso").value;
+			document.getElementById("ingreso_texto").textContent = calcularFechaIngreso(fecha) || "--";
+		}
+
+		// Calcular edad al cargar la página
+		window.addEventListener("DOMContentLoaded", actualizarIngreso);
+
+		// Recalcular edad cuando cambia la fecha
+		document.getElementById("alumno_fechaingreso").addEventListener("input", actualizarIngreso);
 	</script>
 
 	<!-- horarioid-->
