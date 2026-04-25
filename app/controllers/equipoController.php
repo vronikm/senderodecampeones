@@ -248,7 +248,7 @@
 		}
 
 		public function BuscarEquipo($equipo_id){		
-			$consulta_datos=("SELECT equipo_id, equipo_profesorid, equipo_nombre, equipo_torneoid, sede_nombre, equipo_categoria, equipo_foto,
+			$consulta_datos=("SELECT equipo_id, equipo_profesorid, equipo_nombre, equipo_torneoid, sede_id, sede_nombre, equipo_categoria, equipo_foto,
 								CASE WHEN equipo_estado = 'A' THEN 'Activo' 
 									 WHEN equipo_estado = 'I' THEN 'Inactivo' 
 									 ELSE equipo_estado 

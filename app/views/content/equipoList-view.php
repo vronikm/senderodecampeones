@@ -33,6 +33,7 @@
 			$equipo_profesorid	= $datosEquipo['equipo_profesorid'];
 			$equipo_nombre		= $datosEquipo['equipo_nombre'];
 			$equipo_categoria	= $datosEquipo['equipo_categoria'];
+			$equipo_sedeid		= $datosEquipo['sede_id'];
 			$equipo_sede		= $datosEquipo['sede_nombre'];
 			$equipo_estado		= $datosEquipo['ESTADO'];			
 		}
@@ -155,10 +156,10 @@
 												<div class="col-md-2">
 													<div class="form-group">
 														<label for="equipo_sedeid">Sede</label>
-														<select class="form-control select2" id="equipo_sedeid" name="equipo_sedeid">									
+														<select class="form-control select2" id="equipo_sedeid" name="equipo_sedeid">
 															<?php
 																if($equipo_sedeid == 0){	
-																	echo "<option value='0' selected='selected'>- Seleccionar sede -</option>";
+																	echo "<option value='0' selected='selected'>-Seleccionar sede-</option>";
 																}else{
 																	echo "<option value='0'>- Seleccionar sede -</option>";	
 																}
