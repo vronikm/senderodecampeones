@@ -46,7 +46,25 @@
 										WHEN FechaUltPension >= DATE_FORMAT(CURDATE(), '%Y-%m-01')                               
 										THEN 'Al día' 
 										ELSE 'Pendiente' 
-									END Condicion
+										END Condicion,
+									CASE
+										WHEN EXISTS(
+											SELECT 1
+											FROM alumno_carnet ac
+											WHERE ac.carnet_alumnoid = alumno_id
+											AND ac.carnet_mes = MONTH(CURDATE())
+											AND ac.carnet_anio = YEAR(CURDATE())
+											AND ac.carnet_fecha_impresion IS NOT NULL
+										) THEN 1
+										ELSE 0
+									END AS carnet_impreso,
+									(
+										SELECT MAX(ac2.carnet_fecha_impresion)
+										FROM alumno_carnet ac2
+										WHERE ac2.carnet_alumnoid = alumno_id
+										AND ac2.carnet_mes = MONTH(CURDATE())
+										AND ac2.carnet_anio = YEAR(CURDATE())
+									) AS fecha_impresion
 								FROM sujeto_alumno
 								INNER JOIN (        
 									 (
@@ -67,21 +85,30 @@
                                                 and descuento_estado = 'S'     
 								) EstadoPagos ON pago_alumnoid = alumno_id
 								WHERE alumno_estado = 'A'
-								ORDER BY alumno_apellidopaterno, alumno_apellidomaterno";
+								ORDER BY carnet_impreso ASC, alumno_apellidopaterno, alumno_apellidomaterno";
 													
 			$datos = $this->ejecutarConsulta($consulta_datos);
 
 			if($datos->rowCount() > 0) {
 				$datos = $datos->fetchAll();
 				
-				foreach($datos as $rows) {	
+				foreach($datos as $rows) {
+					if((int)$rows['carnet_impreso'] === 1) {
+						$estadoImpresion = '<span class="badge badge-success"><i class="fas fa-check"></i> Impreso</span>';
+						if(!empty($rows['fecha_impresion'])) {
+							$estadoImpresion .= '<br><small class="text-muted">' . $rows['fecha_impresion'] . '</small>';
+						}
+					} else {
+						$estadoImpresion = '<span class="badge badge-warning"><i class="fas fa-clock"></i> Pendiente</span>';
+					}
+
 					$tabla .= '				
 						<tr>
 							<td>' . $rows['alumno_identificacion'] . '</td>
 							<td>' . $rows['NOMBRES'] . '</td>
 							<td>' . $rows['APELLIDOS'] . '</td>
 							<td>' . $rows['FechaUltPension'] . '</td>
-							<td>' . $rows['Condicion'] . '</td>
+							<td data-order="' . (int)$rows['carnet_impreso'] . '">' . $estadoImpresion . '</td>
 							<td>							
 								<a href="' . APP_URL . 'carnetFotoPDF/' . $rows['alumno_id'] . '/" 
 								class="btn float-right btn-success btn-xs" 
@@ -674,7 +701,7 @@
 								pago_saldo, pago_concepto, pago_fecha, pago_fecharegistro, 
 								pago_periodo, pago_recibo, pago_estado)
 							VALUES 
-							('ROT', 'FEF', :alumno_id, 1.00, 0.00, 
+							('ROT', 'FEF', :alumno_id, 3.00, 0.00, 
 								'Por reimpresión de carnet extraviado', 
 								:fecha, :fecha, :periodo, :recibo, 'C')";
 					

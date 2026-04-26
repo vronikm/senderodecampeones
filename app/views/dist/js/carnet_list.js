@@ -1,7 +1,7 @@
 $(function () {
     // Inicializar DataTable
     $("#example1").DataTable({
-        "order": [[5, "asc"]], // Ordena la sexta columna ("Condición") por defecto de manera ascendente
+        "order": [[4, "asc"]], // Ordena por la columna "Impresion" (Pendiente primero)
         "responsive": true, 
         "lengthChange": false, 
         "autoWidth": false,
@@ -25,6 +25,9 @@ $(function () {
             }
         }
     });
+
+    // Cambiar encabezado "Condicion" por "Impresion" en esta vista.
+    $('#example1 thead th').eq(4).text('Impresion');
     
     // ✅ FUNCIÓN PARA CONSULTAR CARNETS PENDIENTES VÍA AJAX
     function consultarCarnetsPendientes(callback) {

@@ -165,7 +165,7 @@
 									<!-- /.col -->
 									<div class="col-sm-6 invoice-col">									
 										<address class="text-center">	
-											<strong class="profile-username">SENDERO DE CAMPEONES - <?php echo $nombre_sede ?> </strong><br><br>										
+											<strong class="profile-username">SENDERO DE CAMPEONES - <?php echo strtoupper($nombre_sede) ?> </strong><br><br>										
 											<div class="row">
 												<div class="col-12 table-responsive">
 													<div class="row">
