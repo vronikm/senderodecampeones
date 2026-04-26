@@ -62,7 +62,7 @@
 		if($descuento->rowCount()==1){
 			$descuento=$descuento->fetch(); 
 			if($descuento["descuento_rubroid"] == 'DBC'){
-				$textodescuento ="Estudiante tiene Beca. ";
+				$textodescuento ="Estudiante tiene Beca DEL 100%. ";
 				$textodescripcion =$descuento["descuento_detalle"];
 				$rubro_valor = $descuento["descuento_valor"];
 				$rubro_inscripcion = $descuento['descuento_valor'];
@@ -70,6 +70,15 @@
 				$alert = "alert-warning";
 				$alerta = "S";		
 				$beca = "S";	
+			}if($descuento["descuento_rubroid"] == 'DBP'){
+				$textodescuento ="Estudiante tiene Beca del 50%. ";
+				$textodescripcion =$descuento["descuento_detalle"];
+				$rubro_valor = $descuento["descuento_valor"];
+				$rubro_inscripcion = $sede['sede_inscripcion'];
+				$alert = "alert-warning";
+				$disabled = " ";
+				$alerta = "S";	
+				$beca = "P";				
 			}if($descuento["descuento_rubroid"] == 'DDS'){
 				$textodescuento ="Estudiante tiene Descuento. ";
 				$textodescripcion =$descuento["descuento_detalle"];

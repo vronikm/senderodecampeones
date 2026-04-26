@@ -492,7 +492,37 @@
 								AND YEAR(ap.pago_fecha) = :anio
 								AND ap.pago_rubroid = 'RPE'
 								AND ac.carnet_alumnoid IS NULL
-							ORDER BY a.alumno_apellidopaterno, a.alumno_apellidomaterno, a.alumno_primernombre";
+						UNION ALL
+						
+						SELECT 
+							a.alumno_id, 
+							a.alumno_identificacion,
+							CONCAT(a.alumno_primernombre, ' ', a.alumno_segundonombre, ' ', 
+								a.alumno_apellidopaterno, ' ', a.alumno_apellidomaterno) as alumno_nombre,
+							a.alumno_imagen,
+							a.alumno_sedeid,
+							h.horario_nombre,
+							ac.carnet_id,
+							ac.carnet_alumnoid,
+							:mes as carnet_mes,
+							:anio as carnet_anio,
+							:fecha_actual as carnet_fecha_emision,
+							:fecha_actual as carnet_fecha_impresion,
+							0 as es_reimpresion,
+							:color_hex as color_hex,
+							:mes_nombre as mes_nombre
+							FROM sujeto_alumno a
+							INNER JOIN asistencia_asignahorario ah ON ah.asignahorario_alumnoid = a.alumno_id
+							INNER JOIN asistencia_horario h ON h.horario_id = ah.asignahorario_horarioid
+							INNER JOIN alumno_pago_descuento apd ON apd.descuento_alumnoid = a.alumno_id
+							LEFT JOIN alumno_carnet ac ON ac.carnet_alumnoid = a.alumno_id 
+													AND ac.carnet_mes = :mes 
+													AND ac.carnet_anio = :anio
+							WHERE a.alumno_estado = 'A'
+								AND apd.descuento_rubroid = 'DBC'
+								AND apd.descuento_valor = 0
+								AND apd.descuento_estado = 'S'
+								AND ac.carnet_alumnoid IS NULL";
 			
 			$parametros = [
 				':fecha_actual' => $fecha_actual,
@@ -769,30 +799,47 @@
 			return $datos->fetchAll();
 		}
 
-		public function carnetPendientesImpresion() {	
+		public function carnetPendientesImpresion() {
 			$mes_actual = date('n');
 			$anio_actual = date('Y');
-			
-			$consulta = "SELECT count(*) as total							
+
+			$consulta = "SELECT COALESCE(SUM(total), 0) AS total
+						FROM (
+							SELECT COUNT(*) as total
 							FROM sujeto_alumno a
 							INNER JOIN asistencia_asignahorario ah ON ah.asignahorario_alumnoid = a.alumno_id
 							INNER JOIN asistencia_horario h ON h.horario_id = ah.asignahorario_horarioid
 							INNER JOIN alumno_pago ap ON ap.pago_alumnoid = a.alumno_id
-							LEFT JOIN alumno_carnet ac ON ac.carnet_alumnoid = a.alumno_id 
-																			AND ac.carnet_mes = :mes 
-																			AND ac.carnet_anio = :anio
+							LEFT JOIN alumno_carnet ac ON ac.carnet_alumnoid = a.alumno_id
+													AND ac.carnet_mes = :mes
+													AND ac.carnet_anio = :anio
 							WHERE a.alumno_estado = 'A'
-									AND ap.pago_estado NOT IN ('E', 'J')
-									AND MONTH(ap.pago_fecha) = :mes
-									AND YEAR(ap.pago_fecha) = :anio
-									AND ap.pago_rubroid = 'RPE'
-									AND ac.carnet_alumnoid IS NULL";
-			
+								AND ap.pago_estado NOT IN ('E', 'J')
+								AND MONTH(ap.pago_fecha) = :mes
+								AND YEAR(ap.pago_fecha) = :anio
+								AND ap.pago_rubroid = 'RPE'
+								AND ac.carnet_alumnoid IS NULL
+
+							UNION ALL
+
+							SELECT COUNT(*) as total
+							FROM alumno_pago_descuento apd
+							INNER JOIN sujeto_alumno a ON a.alumno_id = apd.descuento_alumnoid
+							LEFT JOIN alumno_carnet ac ON ac.carnet_alumnoid = a.alumno_id
+													AND ac.carnet_mes = :mes
+													AND ac.carnet_anio = :anio
+							WHERE apd.descuento_rubroid = 'DBC'
+								AND apd.descuento_valor = 0
+								AND apd.descuento_estado = 'S'
+								AND a.alumno_estado = 'A'
+								AND ac.carnet_alumnoid IS NULL
+						) AS subconsulta";
+
 			$parametros = [
 				':mes' => $mes_actual,
 				':anio' => $anio_actual
 			];
-			
+
 			$datos = $this->ejecutarConsulta($consulta, $parametros);
 			return $datos->fetchAll();
 		}
@@ -840,7 +887,35 @@
 								AND YEAR(ap.pago_fecha) = :anio
 								AND ap.pago_rubroid = 'RPE'
 								AND ac.carnet_alumnoid IS NULL
-							ORDER BY a.alumno_apellidopaterno, a.alumno_apellidomaterno";
+							
+							UNION ALL
+							
+							SELECT 
+								a.alumno_id,
+								a.alumno_identificacion,
+								CONCAT(a.alumno_primernombre, ' ', a.alumno_segundonombre, ' ', 
+									a.alumno_apellidopaterno, ' ', a.alumno_apellidomaterno) as alumno_nombre,
+								a.alumno_imagen,
+								h.horario_nombre,
+								NULL as carnet_id,
+								:mes as carnet_mes,
+								:anio as carnet_anio,
+								:fecha_actual as carnet_fecha_emision,
+								0 as es_reimpresion,
+								:color_hex as color_hex,
+								:mes_nombre as mes_nombre
+							FROM sujeto_alumno a
+							INNER JOIN asistencia_asignahorario ah ON ah.asignahorario_alumnoid = a.alumno_id
+							INNER JOIN asistencia_horario h ON h.horario_id = ah.asignahorario_horarioid
+							INNER JOIN alumno_pago_descuento apd ON apd.descuento_alumnoid = a.alumno_id
+							LEFT JOIN alumno_carnet ac ON ac.carnet_alumnoid = a.alumno_id 
+													AND ac.carnet_mes = :mes 
+													AND ac.carnet_anio = :anio
+							WHERE a.alumno_estado = 'A'
+								AND apd.descuento_rubroid = 'DBC'
+								AND apd.descuento_valor = 0
+								AND apd.descuento_estado = 'S'
+								AND ac.carnet_alumnoid IS NULL";
 			
 			$parametros = [
 				':fecha_actual' => $fecha_actual,
