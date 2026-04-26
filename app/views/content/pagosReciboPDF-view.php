@@ -58,7 +58,7 @@
     // logo : 80 de largo por 55 de alto
     //,,ancho,
 
-    $pdf->Image(APP_URL.'app/views/imagenes/fotos/sedes/'.$sede['sede_foto'], 34, 10, 28, 28);
+    $pdf->Image(APP_URL.'app/views/imagenes/fotos/sedes/'.$sede['sede_foto'], 52, 10, 28, 28);
 
     $pdf->SetLineWidth(0.1); $pdf->Rect(10, 10, 190, 40, "D"); $x=15; $y=13;
   

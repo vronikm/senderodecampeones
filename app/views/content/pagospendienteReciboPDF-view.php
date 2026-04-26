@@ -54,7 +54,7 @@
 
         // logo : 80 de largo por 55 de alto
         //,,ancho,
-        $pdf->Image(APP_URL.'app/views/imagenes/fotos/sedes/'.$sede['sede_foto'], 24, 10, 32, 32);
+        $pdf->Image(APP_URL.'app/views/imagenes/fotos/sedes/'.$sede['sede_foto'], 52, 10, 28, 28);
         $pdf->SetLineWidth(0.1); $pdf->Rect(10, 10, 190, 40, "D"); $x=15; $y=13;
 
         $pdf->SetXY( $x, $y ); $pdf->SetFont( "Arial", "B", 11 ); $pdf->Cell( 260, 8, "FORMATIVA SENDERO DE CAMPEONES", 0, 0, 'C'); $y+=5;
