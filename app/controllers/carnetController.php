@@ -36,6 +36,26 @@
 		 */
 		public function listarAlumnos() {
 			$tabla = "";
+			
+			$alumnos_sin_horario = $this->verificarAlumnosSinHorarioAsignado();
+			if(!empty($alumnos_sin_horario)) {
+				$detalle_alumnos = [];
+				foreach($alumnos_sin_horario as $alumno) {
+					$detalle_alumnos[] = $alumno['alumno_nombre'] . " (" . $alumno['alumno_identificacion'] . ")";
+				}
+				
+				$mensaje = htmlspecialchars(implode(", ", $detalle_alumnos), ENT_QUOTES, 'UTF-8');
+				return '<tr>
+							<td colspan="7" class="text-center">
+								<div class="alert alert-danger mb-0">
+									<i class="fas fa-exclamation-triangle"></i>
+									<strong>Horario pendiente:</strong>
+									Los siguientes alumnos no tienen horario de entrenamiento asignado: ' . $mensaje . '. 
+									Primero debe corregir esta informacion para luego listar los alumnos a los que se generara el carnet.
+								</div>
+							</td>
+						</tr>';
+			}
 
 			$consulta_datos = "SELECT alumno_id, 
 									alumno_identificacion, 
@@ -68,22 +88,23 @@
 								FROM sujeto_alumno
 								INNER JOIN (        
 									 (
-                SELECT pago_alumnoid, MAX(FechaPension) FechaUltPension, MAX(pago_estado) Estado
-                FROM (
-                        SELECT pago_fecha as FechaPension, pago_estado, pago_alumnoid                               
-                                FROM alumno_pago 
-                                WHERE pago_fecha >= DATE_FORMAT(CURDATE(), '%Y-%m-01')
-                                        and pago_estado NOT IN ('E', 'J')
-                ) AS Pagos
-                GROUP BY pago_alumnoid
-                )
-                UNION                
-                SELECT descuento_alumnoid, DATE_FORMAT(CURDATE(), '%Y-%m-05') FechaPago, 'Al dìa' as Estado
-                                from alumno_pago_descuento
-                                where descuento_rubroid = 'DBC'
-                                                and descuento_valor = 0
-                                                and descuento_estado = 'S'     
-								) EstadoPagos ON pago_alumnoid = alumno_id
+										SELECT pago_alumnoid, MAX(FechaPension) FechaUltPension, MAX(pago_estado) Estado
+										FROM (
+												SELECT pago_fecha as FechaPension, pago_estado, pago_alumnoid
+														FROM alumno_pago 
+														WHERE pago_fecha >= DATE_FORMAT(CURDATE(), '%Y-%m-01')
+																AND pago_estado NOT IN ('E', 'J')
+																AND pago_rubroid = 'RPE'
+										) AS Pagos
+										GROUP BY pago_alumnoid
+										)
+										UNION                
+										SELECT descuento_alumnoid, DATE_FORMAT(CURDATE(), '%Y-%m-05') FechaPago, 'Al dìa' as Estado
+														from alumno_pago_descuento
+														where descuento_rubroid = 'DBC'
+																		and descuento_valor = 0
+																		and descuento_estado = 'S'     
+														) EstadoPagos ON pago_alumnoid = alumno_id
 								WHERE alumno_estado = 'A'
 								ORDER BY carnet_impreso ASC, alumno_apellidopaterno, alumno_apellidomaterno";
 													
@@ -142,6 +163,49 @@
 			
 			return $tabla;			
 		}
+		
+		/**
+		 * Verificar alumnos candidatos a carnet que no tienen horario de entrenamiento asignado
+		 * @return array
+		 */
+		public function verificarAlumnosSinHorarioAsignado() {
+			$consulta = "SELECT 
+						a.alumno_id,
+						a.alumno_identificacion,
+						CONCAT(a.alumno_primernombre, ' ', a.alumno_segundonombre, ' ', 
+							a.alumno_apellidopaterno, ' ', a.alumno_apellidomaterno) AS alumno_nombre
+						FROM sujeto_alumno a
+						INNER JOIN (
+							SELECT pago_alumnoid
+							FROM alumno_pago
+							WHERE pago_fecha >= DATE_FORMAT(CURDATE(), '%Y-%m-01')
+								AND pago_estado NOT IN ('E', 'J')
+								AND pago_rubroid = 'RPE'
+							GROUP BY pago_alumnoid
+							UNION
+							SELECT descuento_alumnoid AS pago_alumnoid
+							FROM alumno_pago_descuento
+							WHERE descuento_rubroid = 'DBC'
+								AND descuento_valor = 0
+								AND descuento_estado = 'S'
+						) EstadoPagos ON EstadoPagos.pago_alumnoid = a.alumno_id
+						WHERE a.alumno_estado = 'A'
+							AND NOT EXISTS(
+								SELECT 1
+								FROM asistencia_asignahorario ah
+								INNER JOIN asistencia_horario h ON h.horario_id = ah.asignahorario_horarioid
+								WHERE ah.asignahorario_alumnoid = a.alumno_id
+							)
+						ORDER BY a.alumno_apellidopaterno, a.alumno_apellidomaterno, 
+							a.alumno_primernombre, a.alumno_segundonombre";
+			
+			$datos = $this->ejecutarConsulta($consulta);
+			if($datos && $datos->rowCount() > 0) {
+				return $datos->fetchAll();
+			}
+			
+			return [];
+		}
 
 		public function infoAlumnoCarnet($alumnoid){		
             $consulta_datos="SELECT alumno_identificacion, 
@@ -185,7 +249,8 @@
                                 from alumno_pago_descuento
                                 where descuento_rubroid = 'DBC'
                                                 and descuento_valor = 0
-                                                and descuento_estado = 'S'";	
+                                                and descuento_estado = 'S'
+												and descuento_alumnoid = $alumnoid";	
 			$datos = $this->ejecutarConsulta($consulta_datos);
 			return $datos;
 		}
@@ -669,7 +734,9 @@
 			$anio_actual = date('Y');
 			$fecha_actual = date('Y-m-d');
 			
-			$exitosos = 0;
+			$procesados = 0;
+			$pagos_generados = 0;
+			$reimpresiones_sin_cobro = 0;
 			$errores = [];
 			
 			foreach($alumno_ids as $alumno_id) {
@@ -692,27 +759,46 @@
 						continue;
 					}
 					
-					// Generar número de recibo único
-					$recibo = $this->generarNumeroRecibo('ROT');
+					// Verificar beca 100% (DBC) antes de generar cobro
+					$sqlBeca100 = "SELECT 1
+									FROM alumno_pago_descuento
+									WHERE descuento_alumnoid = :alumno_id
+										AND descuento_rubroid = 'DBC'
+										AND descuento_valor = 0
+										AND descuento_estado = 'S'
+									LIMIT 1";
 					
-					// Insertar pago por reimpresión
-					$sqlPago = "INSERT INTO alumno_pago 
-							(pago_rubroid, pago_formapagoid, pago_alumnoid, pago_valor, 
-								pago_saldo, pago_concepto, pago_fecha, pago_fecharegistro, 
-								pago_periodo, pago_recibo, pago_estado)
-							VALUES 
-							('ROT', 'FEF', :alumno_id, 3.00, 0.00, 
-								'Por reimpresión de carnet extraviado', 
-								:fecha, :fecha, :periodo, :recibo, 'C')";
-					
-					$this->ejecutarConsulta($sqlPago, [
-						':alumno_id' => $alumno_id,
-						':fecha' => $fecha_actual,
-						':periodo' => $name_mesactual . '/' . $anio_actual,
-						':recibo' => $recibo
+					$datosBeca100 = $this->ejecutarConsulta($sqlBeca100, [
+						':alumno_id' => $alumno_id
 					]);
+					$tiene_beca_100 = ($datosBeca100->rowCount() > 0);
 					
-					$exitosos++;
+					if(!$tiene_beca_100) {
+						$recibo = $this->generarNumeroRecibo('ROT');
+					
+						// Insertar pago por reimpresión
+						$sqlPago = "INSERT INTO alumno_pago 
+									(pago_rubroid, pago_formapagoid, pago_alumnoid, pago_valor, 
+										pago_saldo, pago_concepto, pago_fecha, pago_fecharegistro, 
+										pago_periodo, pago_recibo, pago_estado)
+									VALUES 
+									('ROT', 'FEF', :alumno_id, 3.00, 0.00, 
+										'Por reimpresión de carnet extraviado', 
+										:fecha, :fecha, :periodo, :recibo, 'C')";
+						
+						$this->ejecutarConsulta($sqlPago, [
+							':alumno_id' => $alumno_id,
+							':fecha' => $fecha_actual,
+							':periodo' => $name_mesactual . '/' . $anio_actual,
+							':recibo' => $recibo
+						]);
+						
+						$pagos_generados++;
+					} else {
+						$reimpresiones_sin_cobro++;
+					}
+					
+					$procesados++;
 					
 				} catch (Exception $e) {
 					$errores[] = "Error en alumno ID $alumno_id: " . $e->getMessage();
@@ -720,24 +806,28 @@
 			}
 			
 			// Construir respuesta
-			if($exitosos > 0 && empty($errores)) {
+			if($procesados > 0 && empty($errores)) {
 				// ✅ GUARDAR IDS EN SESIÓN en lugar de URL
 				$_SESSION['carnet_reimpresion_ids'] = implode(',', $alumno_ids);
+				$texto = "Se generaron $pagos_generados pagos por reimpresion. Redirigiendo a impresion...";
+				if($reimpresiones_sin_cobro > 0) {
+					$texto = "Se generaron $pagos_generados pagos por reimpresion y $reimpresiones_sin_cobro reimpresiones sin cobro por beca 100%. Redirigiendo a impresion...";
+				}
 				
 				return json_encode([
 					"tipo" => "redireccionar",
 					"titulo" => "¡Reimpresión procesada!",
-					"texto" => "Se generaron $exitosos pagos por reimpresión. Redirigiendo a impresión...",
+					"texto" => $texto,
 					"icono" => "success",
 					"url" => APP_URL . "carnetPDF/"
 				]);
 			}
 			
-			if($exitosos > 0 && !empty($errores)) {
+			if($procesados > 0 && !empty($errores)) {
 				return json_encode([
 					"tipo" => "simple",
 					"titulo" => "Procesamiento parcial",
-					"texto" => "Exitosos: $exitosos. Errores: " . implode(", ", $errores),
+					"texto" => "Procesados: $procesados (pagos generados: $pagos_generados, sin cobro por beca 100%: $reimpresiones_sin_cobro). Errores: " . implode(", ", $errores),
 					"icono" => "warning"
 				]);
 			}
