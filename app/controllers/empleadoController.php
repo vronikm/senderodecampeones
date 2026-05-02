@@ -752,9 +752,9 @@
 			$consulta_datos="SELECT C.catalogo_valor, C.catalogo_descripcion AS Especialidad, 
                                 CASE WHEN empleado_estado = 'A' THEN 'Activo' WHEN empleado_estado = 'I' THEN 'Inactivo' ELSE 'Sin definir' END estado, 
                                 empleado_identificacion as identificacion, P.* 
-                                FROM sujeto_empleado P, general_tabla_catalogo C
-				                WHERE P.empleado_especialidadid = C.catalogo_valor 
-                                    AND P.empleado_id = ".$empleadoid;	
+                                FROM sujeto_empleado P
+                                LEFT JOIN general_tabla_catalogo C ON P.empleado_especialidadid = C.catalogo_valor 
+								WHERE P.empleado_identificacion = ".$empleadoid;	
 			$datos = $this->ejecutarConsulta($consulta_datos);
 			return $datos;
 		}
@@ -2104,7 +2104,8 @@
 		public function ConsolidadoAnticipo($empleadoid){		
 			$consulta_datos="SELECT SUM(egreso_valor) VALOR_ANTICIPO, SUM(egreso_pendiente) ANTICIPO_PENDIENTE
 						from empleado_egreso 
-						where egreso_empleadoid = ".$empleadoid;
+						where egreso_estado = 'P'
+							AND egreso_empleadoid = ".$empleadoid;
 				
 			$datos = $this->ejecutarConsulta($consulta_datos);				
 			return $datos;

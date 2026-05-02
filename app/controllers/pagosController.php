@@ -4,44 +4,60 @@
 	use app\models\mainModel;
 
 	class pagosController extends mainModel{
-		public function listarAlumnosPagos($identificacion, $apellidopaterno, $primernombre, $anio, $sede){					
-			if($identificacion!=""){
-				$identificacion .= '%'; 
-			}
-			if($primernombre!=""){
-				$primernombre .= '%';
-			} 
-			if($apellidopaterno!=""){
-				$apellidopaterno .= '%';
-			}
+		public function listarAlumnosPagos($identificacion, $apellidopaterno, $primernombre, $estado, $sede){
+			// Preparar condiciones dinámicas
 			$tabla="";
-			$consulta_datos="SELECT * FROM sujeto_alumno 
-								WHERE (alumno_primernombre LIKE '".$primernombre."' 
-								OR alumno_identificacion LIKE '".$identificacion."' 
-								OR alumno_apellidopaterno LIKE '".$apellidopaterno."') ";			
-			if($anio!=""){
-				$consulta_datos .= " and YEAR(alumno_fechanacimiento) = '".$anio."'"; 
+			$condiciones = [];
+			$busqueda = [];
+
+			// Identificación
+			if ($identificacion != "") {
+				$busqueda[] = "alumno_identificacion LIKE '".$identificacion."%'";
 			}
 
-			if($identificacion=="" && $primernombre=="" && $apellidopaterno==""){
-				$consulta_datos="SELECT * FROM sujeto_alumno WHERE YEAR(alumno_fechanacimiento) = '".$anio."'";
-			}
-			
-			if($identificacion=="" && $primernombre=="" && $apellidopaterno=="" && $anio == ""){
-				$consulta_datos = "SELECT * FROM sujeto_alumno WHERE alumno_primernombre <> '' ";
+			// Nombre
+			if ($primernombre != "") {
+				$busqueda[] = "alumno_primernombre LIKE '".$primernombre."%'";
 			}
 
-			if($sede!=""){
-				if($sede == 0){
-					$consulta_datos .= " and alumno_sedeid <> '".$sede."'"; 
-				}else{
-					$consulta_datos .= " and alumno_sedeid = '".$sede."'"; 
+			// Apellido
+			if ($apellidopaterno != "") {
+				$busqueda[] = "alumno_apellidopaterno LIKE '".$apellidopaterno."%'";
+			}
+
+			// Agrupar búsqueda por nombre/identificación/apellido
+			if (!empty($busqueda)) {
+				$condiciones[] = "(".implode(" OR ", $busqueda).")";
+			}
+
+			// Si no hay ningún filtro de identificación, nombre o apellido
+			if ($identificacion == "" && $primernombre == "" && $apellidopaterno == "") {
+				if ($estado == "") {					
+					$condiciones = ["alumno_primernombre <> ''"];
 				}
-			}else{
-				$consulta_datos = "SELECT * FROM sujeto_alumno WHERE alumno_primernombre = '' ";
-			}	
+			}
 			
-			$consulta_datos .= " AND alumno_estado <> 'E'";
+			// Filtro de estado
+			if ($estado == "") {
+				$condiciones[] = "alumno_estado = 'A'";
+			} else {
+				$condiciones[] = "alumno_estado = '".$estado."'";
+			}
+
+			// Filtro de sede
+			if ($sede != "") {
+				if ($sede == 0) {
+					$condiciones[] = "alumno_sedeid <> 0";
+				} else {
+					$condiciones[] = "alumno_sedeid = '".$sede."'";
+				}
+			} else {
+				$condiciones = ["alumno_primernombre = ''"]; // sin sede -> nunca traerá resultados
+			}
+
+			// Construir SQL final
+			$consulta_datos = "SELECT * FROM sujeto_alumno WHERE " . implode(" AND ", $condiciones) . " ORDER BY alumno_estado DESC";
+
 			$datos = $this->ejecutarConsulta($consulta_datos);
 			$datos = $datos->fetchAll();
 			foreach($datos as $rows){				
@@ -69,16 +85,36 @@
 					$class = 'class="text-primary"';
 				}else{
 					$class = '';
-				}				
+				}
+				
+				$estadop=$this->BuscarAlumno($rows['alumno_id']);
+				if($estadop->rowCount()==1){
+					$estadop=$estadop->fetch(); 
+					if($estadop['pendiente']==1){
+						$pendiente = 'Pendiente';
+						$clase = '<a class="float-left text-danger">';
+					}else{
+						$pendiente = 'Al día';
+						$clase = '<a class="float-left">';
+					}
+				}
+
+				$pension = $this->pensionesPendientes($rows['alumno_id']);
+				if($pension != ""){
+					$pendiente = "Pendiente";
+					$clase = '<a class="float-left text-danger">';
+				}
+
 				$tabla.='
 					<tr '.$class.'>
 						<td>'.$rows['alumno_identificacion'].'</td>
 						<td>'.$rows['alumno_primernombre'].' '.$rows['alumno_segundonombre'].'</td>
 						<td>'.$rows['alumno_apellidopaterno'].' '.$rows['alumno_apellidomaterno'].'</td>
 						<td>'.$rows['alumno_fechanacimiento'].'</td>
+						<td>'.$clase.$pendiente.'</a></td>
 						<td>
-							<a href="'.APP_URL.'pagosNew/'.$rows['alumno_id'].'/" class="btn float-right '.$botonpago.' btn-sm" target="_blank">Registrar pagos</a>
-							<a href="'.APP_URL.'pagosDescuento/'.$rows['alumno_id'].'/" class="btn float-right '.$boton.' btn-sm" style="margin-right: 5px;" target="_blank">Descuentos</a>
+							<a href="'.APP_URL.'pagosNew/'.$rows['alumno_id'].'/" class="btn float-right '.$botonpago.' btn-xs" target="_blank">Registrar pagos</a>
+							<a href="'.APP_URL.'pagosDescuento/'.$rows['alumno_id'].'/" class="btn float-right '.$boton.' btn-xs" style="margin-right: 5px;" target="_blank">Descuentos</a>
 						</td>
 					</tr>';	
 			}
@@ -181,6 +217,7 @@
 		}
 
 		public function pensionesPendientes($alumnoid){
+			$valor_pension = 0.0;
 			$descuento=$this->AlumnoDescuento($alumnoid);
 			if($descuento->rowCount()==1){
 				$descuento=$descuento->fetch(); 
