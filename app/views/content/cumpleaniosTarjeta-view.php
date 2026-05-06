@@ -3,7 +3,7 @@
  * Genera la tarjeta de cumpleaños como imagen JPEG.
  * Ruta: cumpleaniosTarjeta/{alumno_id}/
  *
- * La foto del alumno se coloca en el rectángulo blanco de la plantilla marcocp.jpeg.
+ * La foto del alumno se coloca en el área interior de la plantilla marco.png.
  * Las proporciones del rectángulo se definen abajo y pueden ajustarse si cambia la plantilla.
  */
 	ob_start();
@@ -51,13 +51,13 @@
 	$bg = imagecolorallocate($canvas, 255, 255, 255);
 	imagefilledrectangle($canvas, 0, 0, $marco_w - 1, $marco_h - 1, $bg);
 
-	// ── Proporciones del rectángulo blanco en marcocp.jpeg ─────
+	// ── Proporciones del área interior en marco.png ─────────────
 	// Ajustar estos valores si se cambia la plantilla.
-	// Coordenadas del interior blanco (sin el borde amarillo).
-	$rect_x = (int)($marco_w * 0.204);   // borde izquierdo del área blanca
-	$rect_y = (int)($marco_h * 0.298);   // borde superior del área blanca
-	$rect_w = (int)($marco_w * 0.588);   // ancho del área blanca
-	$rect_h = (int)($marco_h * 0.482);   // alto del área blanca
+	// Coordenadas del área interior de la foto (sin el borde del marco).
+	$rect_x = (int)($marco_w * 0.218);   // borde izquierdo del área de foto
+	$rect_y = (int)($marco_h * 0.176);   // borde superior del área de foto (sube la imagen)
+	$rect_w = (int)($marco_w * 0.558);   // ancho del área de foto
+	$rect_h = (int)($marco_h * 0.463);   // alto del área de foto
 
 	// ── Cargar foto del alumno ─────────────────────────────────
 	$foto_path = ($alumno['alumno_imagen'] !== '')
@@ -168,7 +168,8 @@
 	$clear = imagecolorallocatealpha($franja_overlay, 0, 0, 0, 127);
 	imagefilledrectangle($franja_overlay, 0, 0, $marco_w - 1, $marco_h - 1, $clear);
 	// alpha 38 ≈ 70% opacidad (escala GD: 0=opaco, 127=transparente)
-	$franja_color = imagecolorallocatealpha($franja_overlay, 0, 42, 100, 38);
+	// Verde institucional tomado de cumpleaniosList (cumples.css: --azul #054017)
+	$franja_color = imagecolorallocatealpha($franja_overlay, 5, 64, 23, 38);
 	$poly_points = [
 		$rect_x,            $franja_y,                     // top-left
 		$rect_x + $rect_w,  $franja_y - $tilt,             // top-right (más bajo, giro horario)
