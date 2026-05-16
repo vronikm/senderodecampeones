@@ -337,10 +337,12 @@
 									CONCAT(alumno_apellidopaterno, ' ',alumno_apellidomaterno) AS APELLIDOS,
 									alumno_fechanacimiento AS FECHANAC,
 									alumno_identificacion as CEDULA,
+									catalogo_descripcion POSICION,
 									case when alumno_numcamiseta = 0 then null else alumno_numcamiseta end AS NUMCAMISETA
 								FROM torneo_jugador 
 									INNER JOIN sujeto_alumno ON alumno_id = jugador_alumnoid
 									INNER JOIN torneo_equipo ON equipo_id = jugador_equipoid
+									INNER JOIN general_tabla_catalogo ON catalogo_valor = jugador_posicioncod
 								WHERE jugador_equipoid = $equipo_id");	
 
 			$datos = $this->ejecutarConsulta($consulta_datos);		
