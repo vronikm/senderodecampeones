@@ -65,8 +65,8 @@
         $pdf->Ln(23);
         $pdf->Cell( 10, 8, "No.", 1, 0, 'C'); //alineación: 'L' alineación a la izquierda (predeterminado), 'C' para centrar o 'R' alineación a la derecha.       
         $pdf->Cell( 75, 8, "APELLIDOS Y NOMBRES", 1); //$pdf->Cell(ancho, alto, 'texto', borde, salto, 'alineacion');  
-        $pdf->Cell( 20, 8, "CEDULA", 1, 0, 'C');    
-        $pdf->Cell( 30, 8, "F. NACIMIENTO", 1, 0, 'C');
+        $pdf->Cell( 23, 8, "CEDULA", 1, 0, 'C');    
+        $pdf->Cell( 27, 8, "F. NACIMIENTO", 1, 0, 'C');
         $pdf->Cell( 35, 8, mb_convert_encoding("POSICIÓN JUEGO", 'ISO-8859-1', 'UTF-8'), 1, 0, 'C');    
         $pdf->Cell( 20, 8, "CAMISETA", 1, 0, 'C');
         $pdf->Ln(2);
@@ -92,8 +92,8 @@
             $pdf->Ln(6);
             $pdf->Cell( 10, 8, $lineNumber, 1); // Imprime el número de línea
             $pdf->Cell( 75, 8, mb_convert_encoding($rows['APELLIDOS'].' '.$rows['NOMBRES'], 'ISO-8859-1', 'UTF-8'), 1);
-            $pdf->Cell( 20, 8, $rows['CEDULA'], 1, 0, 'C');
-            $pdf->Cell( 30, 8, $rows['FECHANAC'], 1, 0, 'C');
+            $pdf->Cell( 23, 8, $rows['CEDULA'], 1, 0, 'C');
+            $pdf->Cell( 27, 8, $rows['FECHANAC'], 1, 0, 'C');
             $pdf->Cell( 35, 8, $rows['POSICION'], 1, 0, 'C');
             $pdf->Cell( 20, 8, $rows['NUMCAMISETA'], 1, 0, 'C');
             $lineNumber++; // Incrementa el número de línea
@@ -105,11 +105,11 @@
 
     // Fila para las firmas
     $pdf->SetFont('Arial', '', 11);
-    $pdf->Cell(90, 10, "SC ".$equipo_sede, 0, 0, 'C');
+    $pdf->Cell(90, 10, "Formativa Sendero de Campeones", 0, 0, 'C');
     $pdf->Cell(90, 10, 'Firma del Organizador', 0, 1, 'C');
 
     // Líneas para las firmas
-    $pdf->Cell(90, 10, '_________________________', 0, 0, 'C');
+    $pdf->Cell(90, 10, '______________________________', 0, 0, 'C');
     $pdf->Cell(90, 10, '_________________________', 0, 1, 'C');
 
     unlink($filename);
