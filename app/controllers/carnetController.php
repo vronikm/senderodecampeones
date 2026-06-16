@@ -818,7 +818,10 @@
 
 			$sql = "UPDATE alumno_carnet
 					SET carnet_fecha_impresion = NOW()
-					WHERE carnet_id IN ($ids_string)";
+					WHERE carnet_id IN ($ids_string)
+						AND carnet_mes = MONTH(CURDATE())
+						AND carnet_anio = YEAR(CURDATE())
+						AND carnet_fecha_impresion IS NULL";
 
 			return $this->ejecutarConsulta($sql);
 		}
@@ -1027,10 +1030,17 @@
 						FROM sujeto_alumno a
 						INNER JOIN asistencia_asignahorario ah ON ah.asignahorario_alumnoid = a.alumno_id
 						INNER JOIN asistencia_horario h ON h.horario_id = ah.asignahorario_horarioid
-						INNER JOIN alumno_carnet ac ON ac.carnet_alumnoid = a.alumno_id
+						INNER JOIN alumno_carnet ac ON ac.carnet_id = (
+							SELECT ac2.carnet_id
+							FROM alumno_carnet ac2
+							WHERE ac2.carnet_alumnoid = a.alumno_id
+								AND ac2.carnet_mes = :mes
+								AND ac2.carnet_anio = :anio
+							ORDER BY ac2.carnet_id DESC
+							LIMIT 1
+						)
 						WHERE a.alumno_id IN ($ids_string)
-						AND ac.carnet_mes = :mes
-						AND ac.carnet_anio = :anio
+						AND a.alumno_estado = 'A'
 						ORDER BY a.alumno_apellidopaterno, a.alumno_apellidomaterno";
 
 			$parametros = [
