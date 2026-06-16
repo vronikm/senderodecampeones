@@ -1,6 +1,9 @@
 <?php
 	use app\controllers\carnetController;
 	$insCarnet = new carnetController();
+	$cobrarReimpresion = $insCarnet->cobrarReimpresionCarnet();
+
+	$valorReimpresion = $insCarnet->valorReimpresionCarnet();
 ?>
 
 <html lang="es">
@@ -110,7 +113,7 @@
 							<i class="fas fa-info-circle"></i>
 							<strong>Información:</strong> 
 							Los carnets se generan automáticamente para todos los alumnos con pago de pensión del mes actual.
-							Use los checkboxes para reimprimir carnets extraviados (se cobrará $1.00 por reimpresión).
+							Use los checkboxes para reimprimir carnets extraviados. <?php echo $cobrarReimpresion ? 'Se generara un cobro de $' . number_format($valorReimpresion, 2, '.', '') . ' por reimpresion.' : 'No se generara cobro por reimpresion.'; ?>
 						</div>
 						
 						<form id="formReimpresion" class="FormularioAjax" data-form="save">
@@ -170,6 +173,7 @@
 	<script src="<?php echo APP_URL; ?>app/views/dist/js/main.js"></script>
 	<script>
 		var APP_URL = '<?php echo APP_URL; ?>';
+		var COBRAR_REIMPRESION = <?php echo $cobrarReimpresion ? 'true' : 'false'; ?>;
 		var MES_ACTUAL = '<?php 
         $formatter = new IntlDateFormatter(
             "es_ES", IntlDateFormatter::NONE, IntlDateFormatter::NONE, 

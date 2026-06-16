@@ -164,29 +164,73 @@ $(function () {
                         }
                     });
                     
-                    // Abrir PDF en nueva ventana
-                    window.open(APP_URL + 'carnetPDF/', '_blank');
-                    
-                    // Cerrar mensaje y recargar después de 2 segundos
-                    setTimeout(function() {
-                        Swal.fire({
-                            icon: 'success',
-                            title: '¡PDF Generado!',
-                            html: `
-                                <div style="padding: 15px;">
-                                    <i class="fas fa-check-circle" style="font-size: 48px; color: #28a745;"></i>
-                                    <p style="margin-top: 15px; font-size: 16px;">
-                                        Los carnets se han enviado a impresión
-                                    </p>
-                                </div>
-                            `,
-                            timer: 2000,
-                            showConfirmButton: false
-                        }).then(() => {
-                            // Recargar la página para actualizar el listado
-                            location.reload();
-                        });
-                    }, 2000);
+                    // Preparar lote exacto y abrir PDF en nueva ventana
+                    var ventanaPDF = window.open('', '_blank');
+                    if(ventanaPDF) {
+                        ventanaPDF.document.write('<p style="font-family: Arial; padding: 20px;">Preparando carnets...</p>');
+                    }
+
+                    $.ajax({
+                        url: APP_URL + 'app/ajax/carnetAjax.php',
+                        type: 'POST',
+                        data: {
+                            modulo_carnet: 'preparar_impresion_mensual'
+                        },
+                        dataType: 'json',
+                        success: function(response) {
+                            if(response.tipo === 'redireccionar' && response.url) {
+                                if(ventanaPDF) {
+                                    ventanaPDF.location.href = response.url;
+                                } else {
+                                    window.open(response.url, '_blank');
+                                }
+
+                                Swal.fire({
+                                    icon: 'success',
+                                    title: 'PDF Generado',
+                                    html: `
+                                        <div style="padding: 15px;">
+                                            <i class="fas fa-check-circle" style="font-size: 48px; color: #28a745;"></i>
+                                            <p style="margin-top: 15px; font-size: 16px;">
+                                                Los carnets se han enviado a impresion
+                                            </p>
+                                        </div>
+                                    `,
+                                    timer: 2000,
+                                    showConfirmButton: false
+                                }).then(() => {
+                                    location.reload();
+                                });
+                            } else {
+                                if(ventanaPDF) {
+                                    ventanaPDF.close();
+                                }
+
+                                Swal.fire({
+                                    icon: response.icono || 'info',
+                                    title: response.titulo || 'Aviso',
+                                    text: response.texto || 'No hay carnets para imprimir',
+                                    confirmButtonColor: '#3085d6'
+                                }).then(() => {
+                                    btn.prop('disabled', false);
+                                });
+                            }
+                        },
+                        error: function() {
+                            if(ventanaPDF) {
+                                ventanaPDF.close();
+                            }
+
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Error',
+                                text: 'No se pudo preparar el PDF de carnets',
+                                confirmButtonColor: '#3085d6'
+                            }).then(() => {
+                                btn.prop('disabled', false);
+                            });
+                        }
+                    });
                 }
             });
         });

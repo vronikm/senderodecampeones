@@ -6,27 +6,88 @@ include 'app/lib/alphapdf.php';
 
 $insCarnet = new carnetController();
 
-// Generador de código QR
-$generator = new barcode_generator();
-$symbology = "qr";
-$optionsQR = array('sx'=>4, 'sy'=>4, 'p'=>-12);
-$tempDir = "app/views/dist/img/temp/";
+$generator  = new barcode_generator();
+$symbology  = "qr";
+$optionsQR  = array('sx'=>4, 'sy'=>4, 'p'=>-12);
+$tempDir    = "app/views/dist/img/temp/";
+if(!is_dir($tempDir)) {
+    @mkdir($tempDir, 0775, true);
+}
 
-// ============================================
-// OBTENER CARNETS UNIFICADOS
-// ============================================
-// Si hay IDs en sesión, son para reimpresión
 $alumno_ids_reimpresion = '';
+$carnet_ids_mensual = '';
+$modo_reimpresion = false;
+$modo_mensual = (isset($_GET['modo']) && $_GET['modo'] === 'mensual');
 
-// ✅ LEER IDS DESDE SESIÓN
-if(isset($_SESSION['carnet_reimpresion_ids']) && !empty($_SESSION['carnet_reimpresion_ids'])) {
+
+// Leer lote mensual firmado. Permite reabrir el PDF aunque los carnets ya queden marcados como impresos.
+if(isset($_GET['mensual'], $_GET['firma']) && $_GET['mensual'] !== '' && $_GET['firma'] !== '') {
+    $token_mensual = strtr($_GET['mensual'], '-_', '+/');
+    $padding_mensual = strlen($token_mensual) % 4;
+    if($padding_mensual > 0) {
+        $token_mensual .= str_repeat('=', 4 - $padding_mensual);
+    }
+
+    $ids_mensual_decodificados = base64_decode($token_mensual, true);
+    if($ids_mensual_decodificados !== false && preg_match('/^\d+(,\d+)*$/', $ids_mensual_decodificados)) {
+        $firma_mensual_esperada = hash_hmac('sha256', $ids_mensual_decodificados, session_id());
+        if(hash_equals($firma_mensual_esperada, $_GET['firma'])) {
+            $carnet_ids_mensual = $ids_mensual_decodificados;
+            $modo_mensual = true;
+        }
+    }
+}
+
+if(empty($carnet_ids_mensual) && isset($_SESSION['carnet_impresion_mensual_ids']) && !empty($_SESSION['carnet_impresion_mensual_ids'])) {
+    $carnet_ids_mensual = $_SESSION['carnet_impresion_mensual_ids'];
+    $modo_mensual = true;
+}
+
+if(isset($_SESSION['carnet_impresion_mensual_ids'])) {
+    unset($_SESSION['carnet_impresion_mensual_ids']);
+}
+// Leer IDs desde URL firmada; si no existe, usar la sesion como respaldo.
+if(isset($_GET['reimpresion'], $_GET['firma']) && $_GET['reimpresion'] !== '' && $_GET['firma'] !== '') {
+    $token_reimpresion = strtr($_GET['reimpresion'], '-_', '+/');
+    $padding = strlen($token_reimpresion) % 4;
+    if($padding > 0) {
+        $token_reimpresion .= str_repeat('=', 4 - $padding);
+    }
+
+    $ids_decodificados = base64_decode($token_reimpresion, true);
+    if($ids_decodificados !== false && preg_match('/^\d+(,\d+)*$/', $ids_decodificados)) {
+        $firma_esperada = hash_hmac('sha256', $ids_decodificados, session_id());
+        if(hash_equals($firma_esperada, $_GET['firma'])) {
+            $alumno_ids_reimpresion = $ids_decodificados;
+            $modo_reimpresion = true;
+        }
+    }
+}
+
+if(isset($_GET['modo']) && $_GET['modo'] === 'reimpresion' && empty($alumno_ids_reimpresion) && isset($_SESSION['carnet_reimpresion_ids']) && !empty($_SESSION['carnet_reimpresion_ids'])) {
     $alumno_ids_reimpresion = $_SESSION['carnet_reimpresion_ids'];
-    // Limpiar la sesión después de leer
+    $modo_reimpresion = true;
+}
+
+if(isset($_SESSION['carnet_reimpresion_ids'])) {
     unset($_SESSION['carnet_reimpresion_ids']);
 }
 
-// Obtener TODOS los carnets (nuevos + reimpresiones)
-$carnetsData = $insCarnet->obtenerCarnetsTodosUnificados($alumno_ids_reimpresion);
+// Obtener carnets segun proceso:
+// - modo mensual: solo carnets pendientes del mes actual.
+// - modo reimpresion: solo carnets seleccionados con check.
+if($modo_reimpresion) {
+    $carnetsData = $insCarnet->obtenerCarnetsReimpresion($alumno_ids_reimpresion);
+} elseif(!empty($carnet_ids_mensual)) {
+    $carnetsData = $insCarnet->obtenerCarnetsMensualesPorIds($carnet_ids_mensual);
+} else {
+    $carnetsData = $insCarnet->obtenerCarnetsPendientesMesActual();
+}
+
+if(empty($carnetsData) && !$modo_reimpresion && empty($carnet_ids_mensual)) {
+    // Fallback mensual: recupera carnets ya creados pero aun no impresos.
+    $carnetsData = $insCarnet->obtenerCarnetsNoImpresosMesActual();
+}
 
 if(empty($carnetsData)) {
     echo "<script>
