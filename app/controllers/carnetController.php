@@ -950,7 +950,7 @@
 					"titulo" => "¡Reimpresión procesada!",
 					"texto" => $texto,
 					"icono" => "success",
-					"url" => APP_URL . "carnetPDF/?reimpresion=" . rawurlencode($token_reimpresion) . "&firma=" . $firma_reimpresion
+					"url" => APP_URL . "carnetPDF/?modo=reimpresion&reimpresion=" . rawurlencode($token_reimpresion) . "&firma=" . $firma_reimpresion
 				]);
 			}
 
@@ -1356,7 +1356,7 @@
 				"titulo" => "PDF preparado",
 				"texto" => "Se prepararon " . count($carnet_ids) . " carnets para impresion",
 				"icono" => "success",
-				"url" => APP_URL . "carnetPDF/?mensual=" . rawurlencode($token_mensual) . "&firma=" . $firma_mensual
+				"url" => APP_URL . "carnetPDF/?modo=mensual&mensual=" . rawurlencode($token_mensual) . "&firma=" . $firma_mensual
 			]);
 		}
 

@@ -19,6 +19,9 @@ $carnet_ids_mensual = '';
 $modo_reimpresion = false;
 $modo_mensual = (isset($_GET['modo']) && $_GET['modo'] === 'mensual');
 $carnetsData = [];
+$contexto_pdf = 'sin_modo';
+$query_keys_pdf = implode(',', array_keys($_GET));
+$session_keys_pdf = implode(',', array_keys($_SESSION ?? []));
 
 // Reimpresion tiene prioridad. Si el servidor pierde query string, se usa la sesion generada por AJAX.
 if(isset($_GET['reimpresion'], $_GET['firma']) && $_GET['reimpresion'] !== '' && $_GET['firma'] !== '') {
@@ -34,6 +37,7 @@ if(isset($_GET['reimpresion'], $_GET['firma']) && $_GET['reimpresion'] !== '' &&
         if(hash_equals($firma_esperada, $_GET['firma'])) {
             $alumno_ids_reimpresion = $ids_decodificados;
             $modo_reimpresion = true;
+            $contexto_pdf = 'reimpresion_url_firmada';
         }
     }
 }
@@ -41,6 +45,7 @@ if(isset($_GET['reimpresion'], $_GET['firma']) && $_GET['reimpresion'] !== '' &&
 if(!$modo_reimpresion && isset($_SESSION['carnet_reimpresion_ids']) && !empty($_SESSION['carnet_reimpresion_ids'])) {
     $alumno_ids_reimpresion = $_SESSION['carnet_reimpresion_ids'];
     $modo_reimpresion = true;
+    $contexto_pdf = 'reimpresion_sesion';
 }
 
 if(isset($_SESSION['carnet_reimpresion_ids'])) {
@@ -61,6 +66,7 @@ if(!$modo_reimpresion && isset($_GET['mensual'], $_GET['firma']) && $_GET['mensu
         if(hash_equals($firma_mensual_esperada, $_GET['firma'])) {
             $carnet_ids_mensual = $ids_mensual_decodificados;
             $modo_mensual = true;
+            $contexto_pdf = 'mensual_url_firmada';
         }
     }
 }
@@ -68,6 +74,7 @@ if(!$modo_reimpresion && isset($_GET['mensual'], $_GET['firma']) && $_GET['mensu
 if(!$modo_reimpresion && empty($carnet_ids_mensual) && isset($_SESSION['carnet_impresion_mensual_ids']) && !empty($_SESSION['carnet_impresion_mensual_ids'])) {
     $carnet_ids_mensual = $_SESSION['carnet_impresion_mensual_ids'];
     $modo_mensual = true;
+    $contexto_pdf = 'mensual_sesion';
 }
 
 if(isset($_SESSION['carnet_impresion_mensual_ids'])) {
@@ -88,8 +95,12 @@ if($modo_reimpresion && !empty($alumno_ids_reimpresion)) {
     }
 }
 if(empty($carnetsData)) {
+    $mensaje_pdf = "No hay carnets para imprimir.\nProceso detectado: " . $contexto_pdf .
+        "\nParametros recibidos: " . ($query_keys_pdf !== "" ? $query_keys_pdf : "ninguno") .
+        "\nSesion disponible: " . ($session_keys_pdf !== "" ? "si" : "no");
+    error_log("[carnetPDF] sin datos contexto={$contexto_pdf} query_keys={$query_keys_pdf} session_keys={$session_keys_pdf}");
     echo "<script>
-        alert('No hay carnets para imprimir');
+        alert(" . json_encode($mensaje_pdf, JSON_UNESCAPED_UNICODE) . ");
         window.history.back();
     </script>";
     exit;
