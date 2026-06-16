@@ -166,8 +166,8 @@
 	<script src="<?php echo APP_URL; ?>app/views/dist/plugins/datatables-responsive/js/responsive.bootstrap4.min.js"></script>
 	<!-- AdminLTE App -->
 	<script src="<?php echo APP_URL; ?>app/views/dist/js/adminlte.min.js"></script>
-	<script src="<?php echo APP_URL; ?>app/views/dist/js/carnet_seleccion.js"></script>
-	<script src="<?php echo APP_URL; ?>app/views/dist/js/carnet_list.js"></script>
+	<script src="<?php echo APP_URL; ?>app/views/dist/js/carnet_seleccion.js?v=<?php echo filemtime(__DIR__ . '/../dist/js/carnet_seleccion.js'); ?>"></script>
+	<script src="<?php echo APP_URL; ?>app/views/dist/js/carnet_list.js?v=<?php echo filemtime(__DIR__ . '/../dist/js/carnet_list.js'); ?>"></script>
 	<script src="<?php echo APP_URL; ?>app/views/dist/js/sweetalert2.all.min.js"></script>
 	<script src="<?php echo APP_URL; ?>app/views/dist/js/ajax.js"></script>
 	<script src="<?php echo APP_URL; ?>app/views/dist/js/main.js"></script>
