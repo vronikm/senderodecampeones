@@ -19,6 +19,20 @@ $carnet_ids_mensual = '';
 $modo_reimpresion = false;
 $modo_mensual = (isset($_GET['modo']) && $_GET['modo'] === 'mensual');
 $carnetsData = [];
+
+// Respaldo para producciÃ³n: si RewriteRule pierde el query string, recuperarlo desde REQUEST_URI.
+if(!isset($_GET['modo']) && !isset($_GET['reimpresion']) && !isset($_GET['mensual']) && isset($_SERVER['REQUEST_URI'])) {
+    $query_string_recuperado = parse_url($_SERVER['REQUEST_URI'], PHP_URL_QUERY);
+    if(!empty($query_string_recuperado)) {
+        parse_str($query_string_recuperado, $parametros_recuperados);
+        foreach(['modo', 'reimpresion', 'mensual', 'firma'] as $parametro_pdf) {
+            if(!isset($_GET[$parametro_pdf]) && isset($parametros_recuperados[$parametro_pdf])) {
+                $_GET[$parametro_pdf] = $parametros_recuperados[$parametro_pdf];
+            }
+        }
+    }
+}
+
 $contexto_pdf = 'sin_modo';
 $query_keys_pdf = implode(',', array_keys($_GET));
 $session_keys_pdf = implode(',', array_keys($_SESSION ?? []));
