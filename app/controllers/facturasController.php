@@ -174,7 +174,8 @@
 								RP.pago_fecharegistro, RP.pago_valor, RP.detalle,
 								RP.alumno,
 								RP.pago_id,
-								RP.codigo
+								RP.codigo,
+								RP.forma_pago
 							FROM (
 								SELECT
 									R.repre_identificacion,
@@ -192,11 +193,13 @@
 									SELECT
 										P.pago_fecharegistro, P.pago_valor, CONCAT(C.catalogo_descripcion, ' ', P.pago_periodo, ', ', P.pago_concepto ) AS detalle,
 										CONCAT(AL.alumno_primernombre, ' ', AL.alumno_segundonombre, ' ', AL.alumno_apellidopaterno, ' ', AL.alumno_apellidomaterno) AS alumno,
-										P.pago_id, R.repre_id, C.catalogo_valor AS codigo
+										P.pago_id, R.repre_id, C.catalogo_valor AS codigo,
+										F.catalogo_descripcion AS forma_pago
 									FROM alumno_representante R
 									INNER JOIN sujeto_alumno AL ON AL.alumno_repreid = R.repre_id
 									INNER JOIN alumno_pago P ON P.pago_alumnoid = AL.alumno_id
 									INNER JOIN general_tabla_catalogo C ON C.catalogo_valor = P.pago_rubroid
+									LEFT JOIN general_tabla_catalogo F ON F.catalogo_valor = P.pago_formapagoid
 									WHERE P.pago_estado = 'C' AND P.pago_fecharegistro BETWEEN '".$fecha_inicio."' AND '".$fecha_fin."'
 										AND NOT EXISTS (
 											SELECT 1 FROM facturas_electronicas_detalle FD
@@ -213,6 +216,7 @@
 				$codigoPago = htmlspecialchars((string)($rows['codigo'] ?? ''), ENT_QUOTES, 'UTF-8');
 				$fechaPago = htmlspecialchars((string)($rows['pago_fecharegistro'] ?? ''), ENT_QUOTES, 'UTF-8');
 				$valorPago = number_format((float)($rows['pago_valor'] ?? 0), 2, '.', '');
+				$formaPago = htmlspecialchars($this->limpiarTextoFactura($rows['forma_pago'] ?? ''), ENT_QUOTES, 'UTF-8');
                 if(empty($rows['pago_id'])){
                     continue;
                 }
@@ -222,6 +226,7 @@
 						<td>'.$rows['fila_numero'].'</td>
 						<td>'.$fechaPago.'</td>
 						<td>'.$valorPago.'</td>
+						<td>'.$formaPago.'</td>
 						<td>'.$detallePago.'</td>
 						<td>'.$alumnoPago.'</td>
 						<td>
@@ -242,7 +247,7 @@
 					</tr>';
 			}
             if($tabla===""){
-                $tabla = '<tr><td colspan="6" class="text-center text-muted">No hay pagos pendientes de facturar en el rango seleccionado.</td></tr>';
+                $tabla = '<tr><td colspan="7" class="text-center text-muted">No hay pagos pendientes de facturar en el rango seleccionado.</td></tr>';
             }
 			return $tabla;
 		}
@@ -1662,6 +1667,11 @@
 			$config = $this->sriConfig();
 			$emisor = $config['emisor'] ?? [];
 			$alumnoid = (int)($_POST['alumno'] ?? 0);
+			$formasPagoSri = $config['formas_pago'] ?? [];
+			$formaPago = (string)($_POST['forma_pago'] ?? '');
+			if($formaPago === '' || !isset($formasPagoSri[$formaPago])){
+				$formaPago = (string)($config['forma_pago_default'] ?? '20');
+			}
 			$pagosIds = $_POST['pagos'] ?? ($_POST['pagos_seleccionados'] ?? []);
 			if(!is_array($pagosIds)){ $pagosIds = [$pagosIds]; }
 			if($alumnoid <= 0){ return $this->respuestaJson('simple', 'Alumno no valido', 'No fue posible identificar el alumno para la factura.', 'error'); }
@@ -1712,7 +1722,7 @@
 					'clave_acceso'=>$claveAcceso, 'establecimiento'=>$establecimiento, 'punto_emision'=>$puntoEmision, 'secuencial'=>$secuencial, 'fecha_emision'=>date('d/m/Y'),
 					'cliente'=>['tipo_identificacion'=>$tipoIdentificacion, 'identificacion'=>$this->normalizarTextoSri($representante['repre_identificacion'], 20), 'razon_social'=>$this->normalizarTextoSri($representante['representante'], 300), 'direccion'=>$this->normalizarTextoSri($representante['repre_direccion'], 300)],
 					'totales'=>['subtotal'=>$subtotal, 'descuento'=>0.00, 'total'=>$total, 'impuestos'=>[['codigo'=>$ivaInfo['codigo'], 'codigo_porcentaje'=>$ivaInfo['codigo_porcentaje'], 'base_imponible'=>$subtotal, 'tarifa'=>$ivaInfo['porcentaje'], 'valor'=>$ivaTotal]]],
-					'detalles'=>$detalles, 'pagos'=>[['forma_pago'=>(string)($config['forma_pago_default'] ?? '20'), 'total'=>$total]],
+					'detalles'=>$detalles, 'pagos'=>[['forma_pago'=>$formaPago, 'total'=>$total]],
 					'info_adicional'=>['Email'=>$representante['repre_correo'], 'Telefono'=>$representante['repre_celular'], 'Generado por'=>$_SESSION['usuario'] ?? 'Sistema']
 				];
 				$xml = $service->generarXMLFactura($datosFactura);
@@ -1728,7 +1738,7 @@
 					$insertDetalle->execute([':factura_id'=>$facturaId, ':pago_id'=>$detalle['pago_id'], ':codigo'=>$detalle['codigo'], ':descripcion'=>$detalle['descripcion'], ':cantidad'=>$detalle['cantidad'], ':precio_unitario'=>$detalle['precio_unitario'], ':descuento'=>$detalle['descuento'], ':precio_total_sin_impuesto'=>$detalle['precio_total_sin_impuesto'], ':iva_tarifa'=>$detalle['iva_tarifa'], ':iva_codigo_porcentaje'=>$detalle['iva_codigo_porcentaje'], ':iva_valor'=>$detalle['iva_valor']]);
 				}
 				$insertPago = $conexion->prepare("INSERT INTO facturas_electronicas_pagos (factura_electronica_id, forma_pago, total) VALUES (:factura_id, :forma_pago, :total)");
-				$insertPago->execute([':factura_id'=>$facturaId, ':forma_pago'=>(string)($config['forma_pago_default'] ?? '20'), ':total'=>$total]);
+				$insertPago->execute([':factura_id'=>$facturaId, ':forma_pago'=>$formaPago, ':total'=>$total]);
 				$ridePath = rtrim($config['storage']['ride'], '/\\').DIRECTORY_SEPARATOR.$claveAcceso.'.html';
 				$ridePath = $this->crearRideHtml(['numero'=>$numero, 'clave_acceso'=>$claveAcceso, 'estado_sri'=>'GENERADA', 'ambiente'=>(string)($config['ambiente'] ?? '1'), 'cliente_razon_social'=>$this->normalizarTextoSri($representante['representante'], 300), 'cliente_identificacion'=>$this->normalizarTextoSri($representante['repre_identificacion'], 20), 'cliente_direccion'=>$this->normalizarTextoSri($representante['repre_direccion'], 300), 'cliente_email'=>$representante['repre_correo'], 'subtotal_iva'=>round($subtotalIva, 2), 'subtotal_0'=>round($subtotal0, 2), 'iva'=>$ivaTotal, 'total'=>$total], $detalles, $config, $ridePath);
 				$updateRide = $conexion->prepare("UPDATE facturas_electronicas SET ride_html = :ride WHERE id = :id");

@@ -250,6 +250,7 @@
 															<th>No</th>
 															<th>Fecha</th>
 															<th>Pago</th>
+															<th>Forma de pago</th>
 															<th>Detalle</th>
 															<th>Alumno</th>
 															<th>Selección</th>
@@ -445,7 +446,14 @@
 					<div class="col-md-6">
 						<h6 class="font-weight-bold">Información Adicional</h6>
 						<p><strong>Usuario:</strong> <?php echo $h($_SESSION['usuario'] ?? 'Sistema'); ?></p>
-						<p><strong>Forma de Pago:</strong> <?php echo $h($sriFormaPagoTexto); ?></p>
+						<div class="form-group mb-2">
+							<label class="font-weight-bold mb-1" for="factura_forma_pago">Forma de Pago:</label>
+							<select class="form-control form-control-sm" id="factura_forma_pago" name="forma_pago">
+								<?php foreach(($sriConfig['formas_pago'] ?? []) as $codigo => $nombre){ ?>
+									<option value="<?php echo $h($codigo); ?>" <?php echo ((string)$codigo === $sriFormaPago) ? 'selected' : ''; ?>><?php echo $h($codigo.' - '.$nombre); ?></option>
+								<?php } ?>
+							</select>
+						</div>
 					</div>
 					<div class="col-md-6">
 						<table class="table table-sm">
@@ -654,6 +662,7 @@
 			const formData = new FormData();
 			formData.append("modulo_facturas", "GENERAR_FACTURA_ELECTRONICA");
 			formData.append("alumno", alumnoFactura);
+			formData.append("forma_pago", $("#factura_forma_pago").val() || "");
 			pagos.forEach(id => formData.append("pagos[]", id));
 
 			const boton = $(this);
