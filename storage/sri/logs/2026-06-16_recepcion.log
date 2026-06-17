@@ -1,0 +1,5 @@
+2026-06-16 21:47:29 | 1606202601110326917900110030040000000010333691313 | {"exito":false,"estado":"ERROR","mensaje":"Error al enviar comprobante: HTTP Error: 302","comprobantes":[]}
+2026-06-16 21:49:59 | 1606202601110326917900110030040000000010333691313 | {"exito":true,"estado":"RECIBIDA","comprobantes":[]}
+2026-06-16 21:58:07 | 1606202601110401528200110020040000000011162464112 | {"exito":false,"estado":"DEVUELTA","comprobantes":[{"clave_acceso":"1606202601110401528200110020040000000011162464112","mensajes":[{"identificador":"35","mensaje":"ARCHIVO NO CUMPLE ESTRUCTURA XML","informacion_adicional":"Se encontró el siguiente error en la estructura del comprobante: cvc-pattern-valid: Value 'NO' is not facet-valid with respect to pattern '[0-9]+' for type 'agenteRetencion'..","tipo":"ERROR"},{"identificador":"","mensaje":"","informacion_adicional":"","tipo":""}]}]}
+2026-06-16 22:04:56 | 1606202601110401528200110020040000000011162464112 | {"exito":true,"estado":"RECIBIDA","comprobantes":[]}
+2026-06-16 22:21:00 | 1606202601110401528200110020040000000028995375611 | {"exito":true,"estado":"RECIBIDA","comprobantes":[]}

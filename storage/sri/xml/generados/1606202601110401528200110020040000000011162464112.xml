@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<factura id="comprobante" version="2.1.0">
+  <infoTributaria>
+    <ambiente>1</ambiente>
+    <tipoEmision>1</tipoEmision>
+    <razonSocial>QUINDE ESPAÑA VERONICA MAGALI</razonSocial>
+    <nombreComercial>DIGITECH</nombreComercial>
+    <ruc>1104015282001</ruc>
+    <claveAcceso>1606202601110401528200110020040000000011162464112</claveAcceso>
+    <codDoc>01</codDoc>
+    <estab>002</estab>
+    <ptoEmi>004</ptoEmi>
+    <secuencial>000000001</secuencial>
+    <dirMatriz>REY DAVID 410-34 Y JUAN EL BAUTISTA</dirMatriz>
+  </infoTributaria>
+  <infoFactura>
+    <fechaEmision>16/06/2026</fechaEmision>
+    <dirEstablecimiento>REY DAVID 410-34 Y JUAN EL BAUTISTA</dirEstablecimiento>
+    <obligadoContabilidad>NO</obligadoContabilidad>
+    <tipoIdentificacionComprador>05</tipoIdentificacionComprador>
+    <razonSocialComprador>Robert Florencio Agurto Mendoza</razonSocialComprador>
+    <identificacionComprador>1103345292</identificacionComprador>
+    <direccionComprador>loja</direccionComprador>
+    <totalSinImpuestos>50.00</totalSinImpuestos>
+    <totalDescuento>0.00</totalDescuento>
+    <totalConImpuestos>
+      <totalImpuesto>
+        <codigo>2</codigo>
+        <codigoPorcentaje>0</codigoPorcentaje>
+        <baseImponible>50.00</baseImponible>
+        <tarifa>0.00</tarifa>
+        <valor>0.00</valor>
+      </totalImpuesto>
+    </totalConImpuestos>
+    <propina>0.00</propina>
+    <importeTotal>50.00</importeTotal>
+    <moneda>DOLAR</moneda>
+    <pagos>
+      <pago>
+        <formaPago>20</formaPago>
+        <total>50.00</total>
+      </pago>
+    </pagos>
+  </infoFactura>
+  <detalles>
+    <detalle>
+      <codigoPrincipal>RPE</codigoPrincipal>
+      <descripcion>Pago Pensión Abril / 2026, del alumno Ronald Julian Agurto Mendoza</descripcion>
+      <cantidad>1.000000</cantidad>
+      <precioUnitario>25.000000</precioUnitario>
+      <descuento>0.00</descuento>
+      <precioTotalSinImpuesto>25.00</precioTotalSinImpuesto>
+      <impuestos>
+        <impuesto>
+          <codigo>2</codigo>
+          <codigoPorcentaje>0</codigoPorcentaje>
+          <tarifa>0.00</tarifa>
+          <baseImponible>25.00</baseImponible>
+          <valor>0.00</valor>
+        </impuesto>
+      </impuestos>
+    </detalle>
+    <detalle>
+      <codigoPrincipal>RPE</codigoPrincipal>
+      <descripcion>Pago Pensión Mayo / 2026, del alumno Ronald Julian Agurto Mendoza</descripcion>
+      <cantidad>1.000000</cantidad>
+      <precioUnitario>25.000000</precioUnitario>
+      <descuento>0.00</descuento>
+      <precioTotalSinImpuesto>25.00</precioTotalSinImpuesto>
+      <impuestos>
+        <impuesto>
+          <codigo>2</codigo>
+          <codigoPorcentaje>0</codigoPorcentaje>
+          <tarifa>0.00</tarifa>
+          <baseImponible>25.00</baseImponible>
+          <valor>0.00</valor>
+        </impuesto>
+      </impuestos>
+    </detalle>
+  </detalles>
+  <infoAdicional>
+    <campoAdicional nombre="Email">fbpinzon@gmail.com</campoAdicional>
+    <campoAdicional nombre="Telefono">0993120984</campoAdicional>
+  </infoAdicional>
+</factura>
