@@ -3,7 +3,7 @@
 return array (
   'ambiente' => '1',
   'iva_tarifa_default' => 0.0,
-  'forma_pago_default' => '20',
+  'forma_pago_default' => '01',
   'emisor' => 
   array (
     'ruc' => '1104015282001',
