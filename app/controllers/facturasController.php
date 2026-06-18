@@ -1480,6 +1480,163 @@
 			return $archivo;
 		}
 
+		/** Genera el RIDE en PDF (FPDF) y lo guarda en $archivo. Devuelve la ruta. */
+		private function crearRidePdf(array $factura, array $detalles, array $config, $archivo){
+			require_once dirname(__DIR__, 2).'/app/lib/fpdf.php';
+
+			$emisor = $config['emisor'] ?? [];
+			$ambiente = (($factura['ambiente'] ?? '1') === '2') ? 'PRODUCCION' : 'PRUEBAS';
+			$estadoSri = (string)($factura['estado_sri'] ?? 'GENERADA');
+			$estaAutorizada = $estadoSri === 'AUTORIZADO';
+			$numeroAutorizacion = trim((string)($factura['numero_autorizacion'] ?? ''));
+			$fechaAutorizacion = trim((string)($factura['fecha_autorizacion'] ?? ''));
+
+			// Logo local de la sede del alumno
+			$logoPath = '';
+			$alumnoId = (int)($factura['alumno_id'] ?? 0);
+			if($alumnoId > 0){
+				try{
+					$row = $this->ejecutarConsulta("SELECT S.sede_foto FROM sujeto_alumno A INNER JOIN general_sede S ON S.sede_id = A.alumno_sedeid WHERE A.alumno_id = ".$alumnoId." LIMIT 1")->fetch();
+					$foto = trim((string)($row['sede_foto'] ?? ''));
+					if($foto !== ''){
+						$cand = dirname(__DIR__, 2).'/app/views/imagenes/fotos/sedes/'.$foto;
+						if(is_file($cand)){ $logoPath = $cand; }
+					}
+				}catch(\Throwable $e){ /* sin logo */ }
+			}
+
+			$t = static function($s){ $c = @iconv('UTF-8', 'ISO-8859-1//TRANSLIT', (string)$s); return $c !== false ? $c : utf8_decode((string)$s); };
+			$money = static function($v){ return number_format((float)$v, 2, '.', ''); };
+			$anchoUtil = 186;
+
+			$pdf = new \FPDF('P', 'mm', 'A4');
+			$pdf->SetMargins(12, 12, 12);
+			$pdf->SetAutoPageBreak(true, 15);
+			$pdf->AddPage();
+
+			// Banner de estado
+			if($estaAutorizada){ $pdf->SetFillColor(212, 237, 218); } else { $pdf->SetFillColor(255, 243, 205); }
+			$pdf->SetFont('Arial', 'B', 9);
+			$pdf->SetTextColor(40, 40, 40);
+			$pdf->Cell($anchoUtil, 8, $t($estaAutorizada ? 'DOCUMENTO AUTORIZADO POR EL SRI' : 'DOCUMENTO GENERADO LOCALMENTE - pendiente de autorizacion SRI'), 1, 1, 'C', true);
+			$pdf->Ln(3);
+
+			// Cabecera: logo + datos del emisor
+			$yIni = $pdf->GetY();
+			$xTexto = 12;
+			if($logoPath !== ''){
+				try{ $pdf->Image($logoPath, 12, $yIni, 32); $xTexto = 48; }catch(\Throwable $e){ $xTexto = 12; }
+			}
+			$anchoTexto = $anchoUtil - ($xTexto - 12);
+			$pdf->SetXY($xTexto, $yIni);
+			$pdf->SetFont('Arial', 'B', 12);
+			$pdf->SetTextColor(0, 0, 0);
+			$pdf->MultiCell($anchoTexto, 6, $t($emisor['razon_social'] ?? ''), 0, 'L');
+			$pdf->SetFont('Arial', '', 9);
+			foreach([
+				'RUC: '.($emisor['ruc'] ?? ''),
+				'Nombre comercial: '.($emisor['nombre_comercial'] ?? ''),
+				'Dir. matriz: '.($emisor['direccion_matriz'] ?? ''),
+				'Dir. establecimiento: '.($emisor['direccion_establecimiento'] ?? ''),
+				'Obligado a contabilidad: '.($emisor['obligado_contabilidad'] ?? 'NO'),
+			] as $l){ $pdf->SetX($xTexto); $pdf->MultiCell($anchoTexto, 5, $t($l), 0, 'L'); }
+			$yLogoBottom = ($logoPath !== '') ? $yIni + 26 : $pdf->GetY();
+			if($pdf->GetY() < $yLogoBottom){ $pdf->SetY($yLogoBottom); }
+			$pdf->Ln(2);
+
+			// Caja: datos de la factura
+			$pdf->SetFont('Arial', 'B', 10);
+			$pdf->SetFillColor(238, 238, 238);
+			$pdf->Cell($anchoUtil, 7, $t('FACTURA  No. '.$factura['numero']), 1, 1, 'L', true);
+			$pdf->SetFont('Arial', '', 9);
+			$yBox = $pdf->GetY();
+			foreach([
+				'Clave de acceso: '.$factura['clave_acceso'],
+				'Numero de autorizacion: '.($numeroAutorizacion !== '' ? $numeroAutorizacion : 'Pendiente'),
+				'Fecha de autorizacion: '.($fechaAutorizacion !== '' ? $fechaAutorizacion : 'Pendiente'),
+				'Estado: '.$estadoSri.'     Ambiente: '.$ambiente.'     Emision: NORMAL',
+			] as $l){ $pdf->MultiCell($anchoUtil, 5, $t($l), 0, 'L'); }
+			$pdf->Rect(12, $yBox, $anchoUtil, $pdf->GetY() - $yBox);
+			$pdf->Ln(2);
+
+			// Caja: datos del cliente
+			$pdf->SetFont('Arial', 'B', 10);
+			$pdf->SetFillColor(238, 238, 238);
+			$pdf->Cell($anchoUtil, 7, $t('DATOS DEL CLIENTE'), 1, 1, 'L', true);
+			$pdf->SetFont('Arial', '', 9);
+			$yBox = $pdf->GetY();
+			foreach([
+				'Cliente: '.($factura['cliente_razon_social'] ?? ''),
+				'Identificacion: '.($factura['cliente_identificacion'] ?? ''),
+				'Direccion: '.($factura['cliente_direccion'] ?? ''),
+				'Email: '.($factura['cliente_email'] ?? ''),
+			] as $l){ $pdf->MultiCell($anchoUtil, 5, $t($l), 0, 'L'); }
+			$pdf->Rect(12, $yBox, $anchoUtil, $pdf->GetY() - $yBox);
+			$pdf->Ln(3);
+
+			// Tabla de detalle
+			$cols = [['Codigo', 20], ['Cant.', 16], ['Detalle', 86], ['P. Unit.', 22], ['Desc.', 20], ['Total', 22]];
+			$pdf->SetFont('Arial', 'B', 8);
+			$pdf->SetFillColor(238, 238, 238);
+			foreach($cols as $c){ $pdf->Cell($c[1], 7, $t($c[0]), 1, 0, 'C', true); }
+			$pdf->Ln();
+			$pdf->SetFont('Arial', '', 8);
+			foreach($detalles as $d){
+				$detalleTxt = $t($d['descripcion'] ?? '');
+				$nb = $this->fpdfContarLineas($pdf, 86, $detalleTxt);
+				$rowH = max(5, $nb * 5);
+				$y = $pdf->GetY();
+				$pdf->Cell(20, $rowH, $t($d['codigo'] ?? ''), 1, 0, 'L');
+				$pdf->Cell(16, $rowH, number_format((float)($d['cantidad'] ?? 1), 2, '.', ''), 1, 0, 'R');
+				$xDet = $pdf->GetX();
+				$pdf->MultiCell(86, 5, $detalleTxt, 1, 'L');
+				$pdf->SetXY($xDet + 86, $y);
+				$pdf->Cell(22, $rowH, $money($d['precio_unitario'] ?? 0), 1, 0, 'R');
+				$pdf->Cell(20, $rowH, $money($d['descuento'] ?? 0), 1, 0, 'R');
+				$pdf->Cell(22, $rowH, $money($d['precio_total_sin_impuesto'] ?? 0), 1, 1, 'R');
+				if($pdf->GetY() < $y + $rowH){ $pdf->SetY($y + $rowH); }
+			}
+			$pdf->Ln(2);
+
+			// Totales (bloque a la derecha)
+			$bloqueW = 92; $xTot = 12 + $anchoUtil - $bloqueW;
+			foreach([
+				['Subtotal IVA', $money($factura['subtotal_iva'] ?? 0), false],
+				['Subtotal 0%', $money($factura['subtotal_0'] ?? 0), false],
+				['IVA', $money($factura['iva'] ?? 0), false],
+				['VALOR TOTAL', $money($factura['total'] ?? 0), true],
+			] as $r){
+				$pdf->SetX($xTot);
+				$pdf->SetFont('Arial', $r[2] ? 'B' : '', 9);
+				$pdf->Cell(60, 7, $t($r[0]), 1, 0, 'R');
+				$pdf->Cell(32, 7, $r[1], 1, 1, 'R');
+			}
+
+			$directorio = dirname($archivo);
+			if(!is_dir($directorio)){ @mkdir($directorio, 0755, true); }
+			$pdf->Output('F', $archivo);
+			return $archivo;
+		}
+
+		/** Aproxima cuantas lineas ocupara $texto en un MultiCell de $ancho mm. */
+		private function fpdfContarLineas($pdf, $ancho, $texto){
+			$ancho = $ancho - 2;
+			$texto = str_replace("\r", '', (string)$texto);
+			$total = 0;
+			foreach(explode("\n", $texto) as $parrafo){
+				$palabras = preg_split('/ +/', trim($parrafo));
+				if(empty($palabras) || $palabras === ['']){ $total++; continue; }
+				$actual = ''; $cuenta = 1;
+				foreach($palabras as $w){
+					$prueba = $actual === '' ? $w : $actual.' '.$w;
+					if($pdf->GetStringWidth($prueba) > $ancho && $actual !== ''){ $cuenta++; $actual = $w; }
+					else{ $actual = $prueba; }
+				}
+				$total += $cuenta;
+			}
+			return max(1, $total);
+		}
+
 		public function contarFacturasGeneradas($alumnoid, $fecha_inicio, $fecha_fin){
 			$alumnoid = (int)$alumnoid;
 			// Rango de fechas valido -> filtra; vacio/invalido -> cuenta todas
@@ -2011,6 +2168,28 @@
 			$ridePath = $this->actualizarRideFacturaSri($conexion, $factura, $config);
 
 			$numero = $factura['establecimiento'].'-'.$factura['punto_emision'].'-'.$factura['secuencial'];
+
+			// RIDE en PDF (legible) para adjuntar al correo
+			$detallesRide = $this->obtenerDetallesRideFactura($conexion, $factura['id']);
+			$ridePdfPath = rtrim($config['storage']['ride'], '/\\').DIRECTORY_SEPARATOR.$factura['clave_acceso'].'.pdf';
+			$this->crearRidePdf([
+				'numero'=>$numero,
+				'alumno_id'=>$factura['alumno_id'] ?? null,
+				'clave_acceso'=>$factura['clave_acceso'],
+				'estado_sri'=>$factura['estado_sri'],
+				'ambiente'=>$factura['ambiente'],
+				'cliente_razon_social'=>$factura['cliente_razon_social'],
+				'cliente_identificacion'=>$factura['cliente_identificacion'],
+				'cliente_direccion'=>$factura['cliente_direccion'],
+				'cliente_email'=>$factura['cliente_email'],
+				'numero_autorizacion'=>$factura['numero_autorizacion'] ?? '',
+				'fecha_autorizacion'=>$factura['fecha_autorizacion'] ?? '',
+				'subtotal_iva'=>$factura['subtotal_iva'],
+				'subtotal_0'=>$factura['subtotal_0'],
+				'iva'=>$factura['iva'],
+				'total'=>$factura['total'],
+			], $detallesRide, $config, $ridePdfPath);
+
 			$emisor = $config['emisor'] ?? [];
 			$nombreEmisor = trim((string)($emisor['nombre_comercial'] ?? ''));
 			if($nombreEmisor === ''){
@@ -2027,9 +2206,9 @@
 
 			$adjuntos = [
 				[
-					'path'=>$ridePath,
-					'filename'=>'RIDE-'.$numero.'.html',
-					'content_type'=>'text/html; charset=UTF-8'
+					'path'=>$ridePdfPath,
+					'filename'=>'RIDE-'.$numero.'.pdf',
+					'content_type'=>'application/pdf'
 				],
 				[
 					'path'=>$xmlPath,
