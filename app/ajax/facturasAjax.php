@@ -85,8 +85,9 @@
 
 			$datos = $insAlumno->BuscarAlumnoFactura($alumno, $fecha_inicio, $fecha_fin);
 			$pagos = $insAlumno->listarPagosFactura($alumno, $fecha_inicio, $fecha_fin);
-			$facturas = $insAlumno->listarFacturasGeneradas($alumno, $fecha_inicio, $fecha_fin);
-			$facturasGeneradas = $insAlumno->contarFacturasGeneradas($alumno, $fecha_inicio, $fecha_fin);
+			// "Facturas generadas" siempre muestra todas (ignora el filtro de fecha)
+			$facturas = $insAlumno->listarFacturasGeneradas($alumno, '', '');
+			$facturasGeneradas = $insAlumno->contarFacturasGeneradas($alumno, '', '');
 
 			$representante = [];
 			if($datos && $datos->rowCount()>0){

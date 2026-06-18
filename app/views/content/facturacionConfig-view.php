@@ -123,6 +123,13 @@
 										</div>
 										<div class="col-md-3">
 											<div class="form-group">
+												<label for="secuencial_inicio">Nro. Inicio</label>
+												<input type="number" min="1" max="999999999" step="1" class="form-control form-control-sm" id="secuencial_inicio" name="secuencial_inicio" value="<?php echo $h($sriConfig['secuencial_inicio'] ?? 1); ?>" required>
+												<small class="form-text text-muted">Desde qué número se emitirán las facturas.</small>
+											</div>
+										</div>
+										<div class="col-md-3">
+											<div class="form-group">
 												<label for="iva_tarifa_default">IVA</label>
 												<select class="form-control form-control-sm" id="iva_tarifa_default" name="iva_tarifa_default" required>
 													<option value="0" <?php echo $selected($sriConfig['iva_tarifa_default'] ?? 0, 0); ?>>0%</option>

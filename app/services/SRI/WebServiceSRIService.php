@@ -15,7 +15,8 @@ class WebServiceSRIService
 
     public function __construct(?array $config = null)
     {
-        $this->config = $config ?? require dirname(__DIR__, 3).'/config/sri.php';
+        $rutaSri = dirname(__DIR__, 3).'/config/sri.php';
+        $this->config = $config ?? (is_file($rutaSri) ? require $rutaSri : []);
         $ambiente = ((string)($this->config['ambiente'] ?? '1') === '2') ? 'produccion' : 'pruebas';
         $this->urlRecepcion = $this->config['webservices'][$ambiente]['recepcion'] ?? '';
         $this->urlAutorizacion = $this->config['webservices'][$ambiente]['autorizacion'] ?? '';

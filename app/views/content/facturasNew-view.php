@@ -177,7 +177,7 @@
 
 									<hr>
 									<strong><i class="fas fa-print mr-1"></i> Facturas generadas</strong>
-									<p class="text-muted" id="representante_facturas"><?php echo $insAlumno->contarFacturasGeneradas($alumno,$fecha_inicio,$fecha_fin); ?></p>
+									<p class="text-muted" id="representante_facturas"><?php echo $insAlumno->contarFacturasGeneradas($alumno,'',''); ?></p>
 								</div>
 
 
@@ -284,7 +284,7 @@
 													</thead>
 													<tbody id="tabla_facturas" >
 														<?php
-															echo $insAlumno->listarFacturasGeneradas($alumno,$fecha_inicio,$fecha_fin);
+															echo $insAlumno->listarFacturasGeneradas($alumno,'','');
 														?>
 													</tbody>
 												</table>

@@ -8,7 +8,8 @@ class FacturaElectronicaService
 
     public function __construct(?array $config = null)
     {
-        $this->config = $config ?? require dirname(__DIR__, 3) . '/config/sri.php';
+        $rutaSri = dirname(__DIR__, 3) . '/config/sri.php';
+        $this->config = $config ?? (is_file($rutaSri) ? require $rutaSri : []);
     }
 
     public function getConfig(): array

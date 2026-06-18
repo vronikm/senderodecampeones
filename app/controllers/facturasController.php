@@ -77,30 +77,39 @@
 			$datos = $this->ejecutarConsulta($consulta_datos);
 			$datos = $datos->fetchAll();
 			foreach($datos as $rows){
-				$detallePago = htmlspecialchars($this->limpiarTextoFactura($rows['detalle'] ?? ''), ENT_QUOTES, 'UTF-8');
-				$alumnoPago = htmlspecialchars($this->limpiarTextoFactura($rows['alumno'] ?? ''), ENT_QUOTES, 'UTF-8');
-				$codigoPago = htmlspecialchars((string)($rows['codigo'] ?? ''), ENT_QUOTES, 'UTF-8');
-				$fechaPago = htmlspecialchars((string)($rows['pago_fecharegistro'] ?? ''), ENT_QUOTES, 'UTF-8');
-				$valorPago = number_format((float)($rows['pago_valor'] ?? 0), 2, '.', '');
-				$consulta_descuento = "SELECT descuento_alumnoid, descuento_estado  FROM alumno_pago_descuento WHERE descuento_alumnoid = ".$rows['alumno_id'];
-				$descuento = $this->ejecutarConsulta($consulta_descuento);
-				if($descuento->rowCount()==1){
-					foreach($descuento as $rows_descuento){
-						if($rows_descuento["descuento_estado"] == 'N'){
-							$boton = "btn-warning";
-						}else{
-							$boton = "btn-info";
-						}
-					}
-				}else{
-					$boton = "btn-secondary";
+				// Estado de facturacion del alumno (por prioridad):
+				//   pagos pendientes de facturar -> azul (btn-info)
+				//   ya tiene facturas (no anuladas) -> amarillo (btn-warning)
+				//   sin pagos por facturar -> gris (btn-secondary)
+				$alumnoId = (int)$rows['alumno_id'];
+				try{
+					$estado = $this->ejecutarConsulta(
+						"SELECT
+							(SELECT COUNT(*) FROM alumno_pago P
+								WHERE P.pago_alumnoid = ".$alumnoId." AND P.pago_estado = 'C'
+									AND NOT EXISTS (
+										SELECT 1 FROM facturas_electronicas_detalle FD
+										INNER JOIN facturas_electronicas FE ON FE.id = FD.factura_electronica_id
+										WHERE FD.pago_id = P.pago_id AND FE.estado_sri <> 'ANULADA'
+									)
+							) AS pagos_pendientes,
+							(SELECT COUNT(*) FROM facturas_electronicas FE2
+								WHERE FE2.alumno_id = ".$alumnoId." AND FE2.estado_sri <> 'ANULADA'
+							) AS facturas"
+					)->fetch();
+					$pagosPendientes = (int)($estado['pagos_pendientes'] ?? 0);
+					$tieneFacturas   = (int)($estado['facturas'] ?? 0);
+				}catch(\Throwable $e){
+					$pagosPendientes = 0;
+					$tieneFacturas   = 0;
 				}
-				$consulta_pagos = "SELECT pago_id FROM alumno_pago WHERE pago_alumnoid = ".$rows['alumno_id'];
-				$pagos = $this->ejecutarConsulta($consulta_pagos);
-				if($pagos->rowCount()>0){
-					$botonpago = "btn-info";
+
+				if($pagosPendientes > 0){
+					$botonpago = "btn-info";       // pagos pendientes de facturar
+				}elseif($tieneFacturas > 0){
+					$botonpago = "btn-warning";    // ya tiene facturas generadas
 				}else{
-					$botonpago = "btn-secondary";
+					$botonpago = "btn-secondary";  // sin pagos por facturar
 				}
 				if($rows['alumno_estado']=="I"){
 					$class = 'class="text-primary"';
@@ -355,19 +364,166 @@
 		}
 
 
-		private function sriConfig(){
-			$configPath = dirname(__DIR__, 2).'/config/sri.php';
-			$config = is_file($configPath) ? require $configPath : [];
-			$localPath = dirname(__DIR__, 2).'/config/sri_local.php';
+		/**
+		 * Defaults estructurales de la facturacion SRI (constantes de la app, no
+		 * datos editables). Permiten que el sistema funcione aunque se borren
+		 * config/sri.php y config/sri_local.php: los datos del emisor, parametros
+		 * y formas de pago se leen de la BD; lo estructural vive aqui.
+		 */
+		private function sriEstructuraBase(){
+			$raiz = dirname(__DIR__, 2);
+			return [
+				'ambiente' => (string)(getenv('SENDERO_SRI_AMBIENTE') ?: '1'),
+				'tipo_emision' => '1',
+				'version_factura' => '2.1.0',
+				'iva_tarifa_default' => (float)(getenv('SENDERO_SRI_IVA_TARIFA') !== false ? getenv('SENDERO_SRI_IVA_TARIFA') : 0),
+				'valores_incluyen_iva' => true,
+				'secuencial_inicio' => 1,
+				'emisor' => [
+					'ruc' => '', 'razon_social' => '', 'nombre_comercial' => '',
+					'direccion_matriz' => '', 'direccion_establecimiento' => '',
+					'codigo_establecimiento' => '001', 'punto_emision' => '001',
+					'obligado_contabilidad' => 'NO', 'contribuyente_especial' => '',
+					'agente_retencion' => '', 'contribuyente_rimpe' => '',
+				],
+				'firma' => [
+					'archivo' => $raiz . '/storage/certificados/firma.p12',
+					'clave' => getenv('SENDERO_SRI_FIRMA_CLAVE') ?: '',
+				],
+				'correo' => [
+					'from' => getenv('SENDERO_FACTURACION_FROM') ?: 'senderodecampeones@outlook.com',
+				],
+				'webservices' => [
+					'pruebas' => [
+						'recepcion' => 'https://celcer.sri.gob.ec/comprobantes-electronicos-ws/RecepcionComprobantesOffline?wsdl',
+						'autorizacion' => 'https://celcer.sri.gob.ec/comprobantes-electronicos-ws/AutorizacionComprobantesOffline?wsdl',
+					],
+					'produccion' => [
+						'recepcion' => 'https://cel.sri.gob.ec/comprobantes-electronicos-ws/RecepcionComprobantesOffline?wsdl',
+						'autorizacion' => 'https://cel.sri.gob.ec/comprobantes-electronicos-ws/AutorizacionComprobantesOffline?wsdl',
+					],
+				],
+				'formas_pago' => [
+					'01' => 'SIN UTILIZACION DEL SISTEMA FINANCIERO',
+					'15' => 'COMPENSACION DE DEUDAS',
+					'16' => 'TARJETA DE DEBITO',
+					'17' => 'DINERO ELECTRONICO',
+					'18' => 'TARJETA PREPAGO',
+					'19' => 'TARJETA DE CREDITO',
+					'20' => 'OTROS CON UTILIZACION DEL SISTEMA FINANCIERO',
+					'21' => 'ENDOSO DE TITULOS',
+				],
+				'forma_pago_default' => getenv('SENDERO_SRI_FORMA_PAGO') ?: '20',
+				'impuestos' => [
+					'IVA' => [
+						'codigo' => '2',
+						'tarifas' => [
+							'0' => ['codigo' => '0', 'porcentaje' => 0],
+							'12' => ['codigo' => '2', 'porcentaje' => 12],
+							'14' => ['codigo' => '3', 'porcentaje' => 14],
+							'15' => ['codigo' => '4', 'porcentaje' => 15],
+							'NO_OBJETO' => ['codigo' => '6', 'porcentaje' => 0],
+							'EXENTO' => ['codigo' => '7', 'porcentaje' => 0],
+						],
+					],
+				],
+				'storage' => [
+					'xml_generados' => $raiz . '/storage/sri/xml/generados/',
+					'xml_firmados' => $raiz . '/storage/sri/xml/firmados/',
+					'xml_autorizados' => $raiz . '/storage/sri/xml/autorizados/',
+					'ride' => $raiz . '/storage/sri/ride/',
+					'logs' => $raiz . '/storage/sri/logs/',
+					'certificados' => $raiz . '/storage/certificados/',
+				],
+			];
+		}
 
-			if(is_file($localPath)){
-				$local = require $localPath;
-				if(is_array($local)){
-					$config = array_replace_recursive(is_array($config) ? $config : [], $local);
+		private function sriConfig(){
+			// Base estructural en codigo (siempre presente, aunque falten los archivos)
+			$config = $this->sriEstructuraBase();
+			$configPath = dirname(__DIR__, 2).'/config/sri.php';
+			if(is_file($configPath)){
+				$archivo = require $configPath;
+				if(is_array($archivo)){
+					$config = array_replace_recursive($config, $archivo);
 				}
 			}
 
-			return is_array($config) ? $config : [];
+			// 1. Fuente principal: tabla facturas_electronicas_config
+			$bd = $this->configEmisorDesdeBd();
+			if(!empty($bd)){
+				$config = array_replace_recursive($config, $bd);
+			}else{
+				// 2. Fallback legacy: config/sri_local.php (pre-wiring / BD no disponible)
+				$localPath = dirname(__DIR__, 2).'/config/sri_local.php';
+				if(is_file($localPath)){
+					$local = require $localPath;
+					if(is_array($local)){
+						$config = array_replace_recursive($config, $local);
+					}
+				}
+			}
+
+			// 3. Catalogo de formas de pago desde la BD (si esta poblado)
+			$formas = $this->formasPagoDesdeBd();
+			if(!empty($formas)){
+				$config['formas_pago'] = $formas;
+			}
+
+			return $config;
+		}
+
+		/**
+		 * Devuelve el overlay de emisor + parametros desde la tabla
+		 * facturas_electronicas_config, o [] si no hay fila configurada
+		 * (RUC vacio) o la BD no esta disponible.
+		 */
+		private function configEmisorDesdeBd(){
+			try{
+				$stmt = $this->ejecutarConsulta("SELECT * FROM facturas_electronicas_config WHERE config_lock = 'X' LIMIT 1");
+				$row = $stmt->fetch();
+			}catch(\Throwable $e){
+				return [];
+			}
+			if(!$row || trim((string)($row['ruc'] ?? '')) === ''){
+				return [];
+			}
+			return [
+				'ambiente' => (string)$row['ambiente'],
+				'tipo_emision' => (string)$row['tipo_emision'],
+				'iva_tarifa_default' => (float)$row['iva_tarifa_default'],
+				'forma_pago_default' => (string)$row['forma_pago_default'],
+				'valores_incluyen_iva' => (bool)((int)$row['valores_incluyen_iva']),
+				'secuencial_inicio' => max(1, (int)($row['secuencial_inicio'] ?? 1)),
+				'emisor' => [
+					'ruc' => (string)$row['ruc'],
+					'razon_social' => (string)$row['razon_social'],
+					'nombre_comercial' => (string)$row['nombre_comercial'],
+					'direccion_matriz' => (string)$row['direccion_matriz'],
+					'direccion_establecimiento' => (string)$row['direccion_establecimiento'],
+					'codigo_establecimiento' => (string)$row['codigo_establecimiento'],
+					'punto_emision' => (string)$row['punto_emision'],
+					'obligado_contabilidad' => (string)$row['obligado_contabilidad'],
+					'contribuyente_especial' => (string)$row['contribuyente_especial'],
+					'agente_retencion' => (string)$row['agente_retencion'],
+					'contribuyente_rimpe' => (string)$row['contribuyente_rimpe'],
+				],
+			];
+		}
+
+		/** Catalogo SRI de formas de pago desde la BD (codigo => nombre). */
+		private function formasPagoDesdeBd(){
+			try{
+				$stmt = $this->ejecutarConsulta("SELECT codigo, nombre FROM facturas_electronicas_forma_pago WHERE activo = 1 ORDER BY orden, codigo");
+				$rows = $stmt->fetchAll();
+			}catch(\Throwable $e){
+				return [];
+			}
+			$formas = [];
+			foreach($rows as $r){
+				$formas[(string)$r['codigo']] = (string)$r['nombre'];
+			}
+			return $formas;
 		}
 
 		public function obtenerConfiguracionSri(){
@@ -410,8 +566,74 @@
 			return rtrim($dir, '/\\').DIRECTORY_SEPARATOR.'firma.key.php';
 		}
 
+		/**
+		 * Ruta del secreto de cifrado, fuera del control de versiones.
+		 * Vive en storage/ (protegido por .htaccess) y NO debe versionarse.
+		 */
+		private function rutaSecretoCriptoSri(){
+			$config = $this->sriConfig();
+			$dir = $config['storage']['certificados'] ?? (dirname(__DIR__, 2).'/storage/certificados/');
+			return rtrim($dir, '/\\').DIRECTORY_SEPARATOR.'.cryptokey.php';
+		}
+
+		/**
+		 * Secreto aleatorio (32 bytes) persistido en disco fuera del repo.
+		 * Si $generar es true y no existe, se crea uno nuevo.
+		 */
+		private function obtenerSecretoCriptoSri($generar = false){
+			$path = $this->rutaSecretoCriptoSri();
+			if(is_file($path)){
+				$raw = trim(str_replace('<?php exit; ?>', '', (string)file_get_contents($path)));
+				$secreto = base64_decode($raw, true);
+				if($secreto !== false && $secreto !== ''){
+					return $secreto;
+				}
+			}
+			if($generar && function_exists('random_bytes')){
+				$this->protegerDirectorioSri(dirname($path));
+				$secreto = random_bytes(32);
+				if(file_put_contents($path, "<?php exit; ?>\n".base64_encode($secreto), LOCK_EX) !== false){
+					@chmod($path, 0600);
+					return $secreto;
+				}
+			}
+			return '';
+		}
+
+		/**
+		 * Llave para CIFRAR: la mas fuerte disponible.
+		 * Prioridad: variable de entorno SENDERO_SRI_CRYPTO_KEY (secreto explicito)
+		 *  > secreto aleatorio en storage (se genera si falta)
+		 *  > derivacion legacy (constantes publicas) solo como ultimo recurso.
+		 */
 		private function claveCriptoSri(){
+			$env = getenv('SENDERO_SRI_CRYPTO_KEY');
+			if($env !== false && $env !== ''){
+				return hash('sha256', $env, true);
+			}
+			$secreto = $this->obtenerSecretoCriptoSri(true);
+			if($secreto !== ''){
+				return hash('sha256', $secreto, true);
+			}
 			return hash('sha256', APP_SESSION_NAME.'|'.APP_URL, true);
+		}
+
+		/**
+		 * Llaves candidatas para DESCIFRAR (incluye la legacy para poder leer
+		 * datos cifrados con la llave antigua durante la transicion).
+		 */
+		private function clavesCriptoSriCandidatas(){
+			$claves = [];
+			$env = getenv('SENDERO_SRI_CRYPTO_KEY');
+			if($env !== false && $env !== ''){
+				$claves[] = hash('sha256', $env, true);
+			}
+			$secreto = $this->obtenerSecretoCriptoSri(false);
+			if($secreto !== ''){
+				$claves[] = hash('sha256', $secreto, true);
+			}
+			$claves[] = hash('sha256', APP_SESSION_NAME.'|'.APP_URL, true); // legacy
+			return $claves;
 		}
 
 		private function protegerDirectorioSri($dir){
@@ -420,8 +642,12 @@
 			}
 
 			$htaccess = rtrim($dir, '/\\').DIRECTORY_SEPARATOR.'.htaccess';
-			if(!is_file($htaccess)){
-				file_put_contents($htaccess, "Require all denied\nDeny from all\n", LOCK_EX);
+			// Apache 2.4 usa mod_authz_core (Require); el "Deny" legacy de 2.2 se
+			// envuelve en IfModule para no romper el servidor cuando mod_access_compat
+			// no esta cargado (provocaba HTTP 500 en vez de denegar limpiamente).
+			$reglas = "Options -Indexes\nRequire all denied\n<IfModule mod_access_compat.c>\n    Deny from all\n</IfModule>\n";
+			if(!is_file($htaccess) || trim((string)@file_get_contents($htaccess)) !== trim($reglas)){
+				file_put_contents($htaccess, $reglas, LOCK_EX);
 			}
 		}
 
@@ -430,8 +656,6 @@
 				return false;
 			}
 
-			$path = $this->rutaClaveFirmaSri();
-			$this->protegerDirectorioSri(dirname($path));
 			$iv = random_bytes(16);
 			$cipher = openssl_encrypt((string)$clave, 'AES-256-CBC', $this->claveCriptoSri(), OPENSSL_RAW_DATA, $iv);
 
@@ -439,13 +663,81 @@
 				return false;
 			}
 
-			$payload = [
+			$payload = base64_encode(json_encode([
 				'method' => 'AES-256-CBC',
 				'iv' => base64_encode($iv),
 				'data' => base64_encode($cipher)
-			];
+			]));
 
-			return file_put_contents($path, "<?php exit; ?>\n".base64_encode(json_encode($payload)), LOCK_EX) !== false;
+			return $this->guardarClaveFirmaEnBd($payload);
+		}
+
+		/** Persiste el blob cifrado de la clave de la firma en la BD (fila unica). */
+		private function guardarClaveFirmaEnBd($payload){
+			try{
+				$conexion = $this->conectar();
+				$stmt = $conexion->prepare(
+					"INSERT INTO facturas_electronicas_certificado (cert_lock, clave_cifrada)
+					 VALUES ('X', :clave)
+					 ON DUPLICATE KEY UPDATE clave_cifrada = VALUES(clave_cifrada)"
+				);
+				return $stmt->execute([':clave' => $payload]);
+			}catch(\Throwable $e){
+				return false;
+			}
+		}
+
+		/** Lee el blob cifrado de la clave de la firma desde la BD. */
+		private function leerClaveFirmaDeBd(){
+			try{
+				$stmt = $this->ejecutarConsulta("SELECT clave_cifrada FROM facturas_electronicas_certificado WHERE cert_lock = 'X' LIMIT 1");
+				$row = $stmt->fetch();
+				return ($row && !empty($row['clave_cifrada'])) ? (string)$row['clave_cifrada'] : '';
+			}catch(\Throwable $e){
+				return '';
+			}
+		}
+
+		/** Descifra un blob (base64 de JSON) probando las llaves candidatas. */
+		private function descifrarClaveFirma($raw){
+			$raw = trim((string)$raw);
+			if($raw === '' || !function_exists('openssl_decrypt')){
+				return '';
+			}
+			$payload = json_decode(base64_decode($raw), true);
+			if(!is_array($payload) || empty($payload['iv']) || empty($payload['data'])){
+				return '';
+			}
+			$method = $payload['method'] ?? 'AES-256-CBC';
+			$data = base64_decode($payload['data']);
+			$iv = base64_decode($payload['iv']);
+			foreach($this->clavesCriptoSriCandidatas() as $key){
+				$clave = openssl_decrypt($data, $method, $key, OPENSSL_RAW_DATA, $iv);
+				if($clave !== false && $clave !== ''){
+					return (string)$clave;
+				}
+			}
+			return '';
+		}
+
+		/**
+		 * Migra la clave de la firma desde el archivo legacy (firma.key.php) a la BD,
+		 * recifrandola con la llave endurecida. Idempotente.
+		 */
+		public function migrarClaveFirmaSriABd(){
+			if($this->descifrarClaveFirma($this->leerClaveFirmaDeBd()) !== ''){
+				return 'YA_EN_BD';
+			}
+			$path = $this->rutaClaveFirmaSri();
+			if(!is_file($path)){
+				return 'SIN_ARCHIVO';
+			}
+			$raw = trim(str_replace('<?php exit; ?>', '', (string)file_get_contents($path)));
+			$clave = $this->descifrarClaveFirma($raw);
+			if($clave === ''){
+				return 'NO_DESCIFRABLE';
+			}
+			return $this->guardarClaveFirmaSri($clave) ? 'MIGRADA' : 'ERROR_BD';
 		}
 
 		private function leerClaveFirmaSri(){
@@ -459,28 +751,20 @@
 				return (string)$config['firma']['clave'];
 			}
 
+			// 1. Ubicacion principal: base de datos
+			$clave = $this->descifrarClaveFirma($this->leerClaveFirmaDeBd());
+			if($clave !== ''){
+				return $clave;
+			}
+
+			// 2. Fallback: archivo legacy firma.key.php (compatibilidad / pre-migracion)
 			$path = $this->rutaClaveFirmaSri();
-			if(!is_file($path) || !function_exists('openssl_decrypt')){
-				return '';
+			if(is_file($path)){
+				$raw = trim(str_replace('<?php exit; ?>', '', (string)file_get_contents($path)));
+				return $this->descifrarClaveFirma($raw);
 			}
 
-			$raw = file_get_contents($path);
-			$raw = trim(str_replace('<?php exit; ?>', '', $raw));
-			$payload = json_decode(base64_decode($raw), true);
-
-			if(!is_array($payload) || empty($payload['iv']) || empty($payload['data'])){
-				return '';
-			}
-
-			$clave = openssl_decrypt(
-				base64_decode($payload['data']),
-				$payload['method'] ?? 'AES-256-CBC',
-				$this->claveCriptoSri(),
-				OPENSSL_RAW_DATA,
-				base64_decode($payload['iv'])
-			);
-
-			return $clave === false ? '' : (string)$clave;
+			return '';
 		}
 
         private function extraerRucCertificadoSri(array $certInfo){
@@ -579,6 +863,7 @@
 			$iva = (string)($_POST['iva_tarifa_default'] ?? '0');
 			$formaPago = (string)($_POST['forma_pago_default'] ?? '20');
 			$obligado = strtoupper((string)($_POST['obligado_contabilidad'] ?? 'NO')) === 'SI' ? 'SI' : 'NO';
+			$secuencialInicio = max(1, min(999999999, (int)($_POST['secuencial_inicio'] ?? 1)));
 
 			if(strlen($ruc) !== 13 || substr($ruc, -3) === '000'){
 				return $this->respuestaJson('simple', 'RUC no valido', 'El RUC del emisor debe tener 13 digitos y terminar con un codigo de establecimiento valido.', 'error');
@@ -621,12 +906,70 @@
 				}
 			}
 
-			$contenido = "<?php\n\nreturn ".var_export($local, true).";\n";
-			if(file_put_contents($this->rutaConfigLocalSri(), $contenido, LOCK_EX) === false){
-				return $this->respuestaJson('simple', 'No se pudo guardar', 'Revise permisos de escritura en config/sri_local.php.', 'error');
+			$em = $local['emisor'];
+			$guardado = $this->guardarConfigEmisorEnBd([
+				'ambiente' => $local['ambiente'],
+				'tipo_emision' => (string)($config['tipo_emision'] ?? '1'),
+				'iva_tarifa_default' => (float)$local['iva_tarifa_default'],
+				'forma_pago_default' => $local['forma_pago_default'],
+				'valores_incluyen_iva' => !empty($config['valores_incluyen_iva']) ? 1 : 0,
+				'secuencial_inicio' => $secuencialInicio,
+				'ruc' => $em['ruc'],
+				'razon_social' => $em['razon_social'],
+				'nombre_comercial' => $em['nombre_comercial'],
+				'direccion_matriz' => $em['direccion_matriz'],
+				'direccion_establecimiento' => $em['direccion_establecimiento'],
+				'codigo_establecimiento' => $em['codigo_establecimiento'],
+				'punto_emision' => $em['punto_emision'],
+				'obligado_contabilidad' => $em['obligado_contabilidad'],
+				'contribuyente_especial' => $em['contribuyente_especial'],
+				'agente_retencion' => $em['agente_retencion'],
+				'contribuyente_rimpe' => $em['contribuyente_rimpe'],
+			]);
+
+			if(!$guardado){
+				return $this->respuestaJson('simple', 'No se pudo guardar', 'No fue posible guardar la configuracion en la base de datos.', 'error');
 			}
 
 			return $this->respuestaJson('recargar', 'Configuracion guardada', 'La configuracion de facturacion electronica fue actualizada.', 'success');
+		}
+
+		/** Upsert de la fila unica de configuracion del emisor en la BD. */
+		private function guardarConfigEmisorEnBd(array $d){
+			try{
+				$conexion = $this->conectar();
+				$stmt = $conexion->prepare(
+					"INSERT INTO facturas_electronicas_config
+						(config_lock, ambiente, tipo_emision, iva_tarifa_default, forma_pago_default,
+						 valores_incluyen_iva, secuencial_inicio, ruc, razon_social, nombre_comercial, direccion_matriz,
+						 direccion_establecimiento, codigo_establecimiento, punto_emision,
+						 obligado_contabilidad, contribuyente_especial, agente_retencion,
+						 contribuyente_rimpe, updated_by)
+					 VALUES ('X', :ambiente, :tipo_emision, :iva, :fp, :vii, :sini, :ruc, :rs, :nc, :dm, :de,
+						 :ce, :pe, :oc, :cesp, :ar, :rimpe, :uby)
+					 ON DUPLICATE KEY UPDATE
+						 ambiente=VALUES(ambiente), tipo_emision=VALUES(tipo_emision),
+						 iva_tarifa_default=VALUES(iva_tarifa_default), forma_pago_default=VALUES(forma_pago_default),
+						 valores_incluyen_iva=VALUES(valores_incluyen_iva), secuencial_inicio=VALUES(secuencial_inicio), ruc=VALUES(ruc),
+						 razon_social=VALUES(razon_social), nombre_comercial=VALUES(nombre_comercial),
+						 direccion_matriz=VALUES(direccion_matriz), direccion_establecimiento=VALUES(direccion_establecimiento),
+						 codigo_establecimiento=VALUES(codigo_establecimiento), punto_emision=VALUES(punto_emision),
+						 obligado_contabilidad=VALUES(obligado_contabilidad),
+						 contribuyente_especial=VALUES(contribuyente_especial),
+						 agente_retencion=VALUES(agente_retencion), contribuyente_rimpe=VALUES(contribuyente_rimpe),
+						 updated_by=VALUES(updated_by)"
+				);
+				return $stmt->execute([
+					':ambiente'=>$d['ambiente'], ':tipo_emision'=>$d['tipo_emision'], ':iva'=>$d['iva_tarifa_default'],
+					':fp'=>$d['forma_pago_default'], ':vii'=>$d['valores_incluyen_iva'], ':sini'=>$d['secuencial_inicio'], ':ruc'=>$d['ruc'],
+					':rs'=>$d['razon_social'], ':nc'=>$d['nombre_comercial'], ':dm'=>$d['direccion_matriz'],
+					':de'=>$d['direccion_establecimiento'], ':ce'=>$d['codigo_establecimiento'], ':pe'=>$d['punto_emision'],
+					':oc'=>$d['obligado_contabilidad'], ':cesp'=>$d['contribuyente_especial'], ':ar'=>$d['agente_retencion'],
+					':rimpe'=>$d['contribuyente_rimpe'], ':uby'=>($_SESSION['usuarioid'] ?? null),
+				]);
+			}catch(\Throwable $e){
+				return false;
+			}
 		}
 
 		public function subirCertificadoSri(){
@@ -692,7 +1035,41 @@
 				return $this->respuestaJson('simple', 'Clave no guardada', 'La firma fue validada, pero no se pudo proteger la clave localmente.', 'error');
 			}
 
+			// Persistir metadatos del certificado para la administracion de la vista
+			$this->guardarMetadatosCertificadoSri();
+
 			return $this->respuestaJson('recargar', 'Firma cargada', 'La firma electronica fue validada y almacenada correctamente.', 'success');
+		}
+
+		/** Upsert de los metadatos del certificado (no toca clave_cifrada). */
+		private function guardarMetadatosCertificadoSri(){
+			try{
+				$info = $this->obtenerInfoCertificadoSri();
+				$toDt = static function($s){ $s = trim((string)$s); if($s === ''){ return null; } $ts = strtotime($s); return $ts ? date('Y-m-d H:i:s', $ts) : null; };
+				$conexion = $this->conectar();
+				$stmt = $conexion->prepare(
+					"INSERT INTO facturas_electronicas_certificado
+						(cert_lock, archivo, nombre_original, ruc_certificado, razon_social, serial, valido_desde, valido_hasta, estado, updated_by)
+					 VALUES ('X', :archivo, :nombre, :ruc, :rs, :serial, :vd, :vh, :estado, :uby)
+					 ON DUPLICATE KEY UPDATE
+						 archivo=VALUES(archivo), nombre_original=VALUES(nombre_original), ruc_certificado=VALUES(ruc_certificado),
+						 razon_social=VALUES(razon_social), serial=VALUES(serial), valido_desde=VALUES(valido_desde),
+						 valido_hasta=VALUES(valido_hasta), estado=VALUES(estado), updated_by=VALUES(updated_by)"
+				);
+				return $stmt->execute([
+					':archivo'=>(string)($info['ruta'] ?? ''),
+					':nombre'=>(string)($info['archivo'] ?? ''),
+					':ruc'=>(string)($info['ruc'] ?? ''),
+					':rs'=>(string)($info['titular'] ?? ''),
+					':serial'=>(string)($info['serial'] ?? ''),
+					':vd'=>$toDt($info['valido_desde'] ?? ''),
+					':vh'=>$toDt($info['valido_hasta'] ?? ''),
+					':estado'=>(string)($info['estado'] ?? 'NO_CONFIGURADO'),
+					':uby'=>($_SESSION['usuarioid'] ?? null),
+				]);
+			}catch(\Throwable $e){
+				return false;
+			}
 		}
 
 		public function probarCertificadoSri(){
@@ -996,11 +1373,14 @@
 			return ['codigo'=>'2', 'codigo_porcentaje'=>'0', 'porcentaje'=>0.00];
 		}
 
-		private function reservarSecuencialFactura(\PDO $conexion, $tipoComprobante, $establecimiento, $puntoEmision){
+		private function reservarSecuencialFactura(\PDO $conexion, $tipoComprobante, $establecimiento, $puntoEmision, $inicio = 1){
+			$inicio = max(1, (int)$inicio);
 			$insert = $conexion->prepare("INSERT IGNORE INTO facturas_electronicas_secuenciales (tipo_comprobante, establecimiento, punto_emision, secuencial_actual) VALUES (:tipo, :estab, :pto, 0)");
 			$insert->execute([':tipo'=>$tipoComprobante, ':estab'=>$establecimiento, ':pto'=>$puntoEmision]);
-			$update = $conexion->prepare("UPDATE facturas_electronicas_secuenciales SET secuencial_actual = LAST_INSERT_ID(secuencial_actual + 1) WHERE tipo_comprobante = :tipo AND establecimiento = :estab AND punto_emision = :pto");
-			$update->execute([':tipo'=>$tipoComprobante, ':estab'=>$establecimiento, ':pto'=>$puntoEmision]);
+			// Proximo numero = max(secuencial_actual + 1, Nro. Inicio configurado): respeta
+			// el piso pero nunca retrocede (no se pueden repetir numeros ya emitidos).
+			$update = $conexion->prepare("UPDATE facturas_electronicas_secuenciales SET secuencial_actual = LAST_INSERT_ID(GREATEST(secuencial_actual + 1, :inicio)) WHERE tipo_comprobante = :tipo AND establecimiento = :estab AND punto_emision = :pto");
+			$update->execute([':tipo'=>$tipoComprobante, ':estab'=>$establecimiento, ':pto'=>$puntoEmision, ':inicio'=>$inicio]);
 			$secuencial = (int)$conexion->lastInsertId();
 			if($secuencial <= 0){ throw new \RuntimeException('No fue posible reservar el secuencial de la factura.'); }
 			return str_pad((string)$secuencial, 9, '0', STR_PAD_LEFT);
@@ -1087,19 +1467,21 @@
 
 		public function contarFacturasGeneradas($alumnoid, $fecha_inicio, $fecha_fin){
 			$alumnoid = (int)$alumnoid;
-			$fecha_inicio = preg_match('/^\d{4}-\d{2}-\d{2}$/', (string)$fecha_inicio) ? $fecha_inicio : date('Y-m-d');
-			$fecha_fin = preg_match('/^\d{4}-\d{2}-\d{2}$/', (string)$fecha_fin) ? $fecha_fin : date('Y-m-d');
-			$consulta = "SELECT COUNT(*) AS total FROM sujeto_alumno A INNER JOIN alumno_representante R ON R.repre_id = A.alumno_repreid INNER JOIN facturas_electronicas FE ON FE.representante_id = R.repre_id WHERE A.alumno_id = ".$alumnoid." AND FE.fecha_emision BETWEEN '".$fecha_inicio."' AND '".$fecha_fin."' AND FE.estado_sri <> 'ANULADA'";
+			// Rango de fechas valido -> filtra; vacio/invalido -> cuenta todas
+			$filtroFecha = (preg_match('/^\d{4}-\d{2}-\d{2}$/', (string)$fecha_inicio) && preg_match('/^\d{4}-\d{2}-\d{2}$/', (string)$fecha_fin))
+				? " AND FE.fecha_emision BETWEEN '".$fecha_inicio."' AND '".$fecha_fin."'" : "";
+			$consulta = "SELECT COUNT(*) AS total FROM sujeto_alumno A INNER JOIN alumno_representante R ON R.repre_id = A.alumno_repreid INNER JOIN facturas_electronicas FE ON FE.representante_id = R.repre_id WHERE A.alumno_id = ".$alumnoid." AND FE.estado_sri <> 'ANULADA'".$filtroFecha;
 			$datos = $this->ejecutarConsulta($consulta)->fetch();
 			return (int)($datos['total'] ?? 0);
 		}
 
 		public function listarFacturasGeneradas($alumnoid, $fecha_inicio, $fecha_fin){
 			$alumnoid = (int)$alumnoid;
-			$fecha_inicio = preg_match('/^\d{4}-\d{2}-\d{2}$/', (string)$fecha_inicio) ? $fecha_inicio : date('Y-m-d');
-			$fecha_fin = preg_match('/^\d{4}-\d{2}-\d{2}$/', (string)$fecha_fin) ? $fecha_fin : date('Y-m-d');
+			// Rango de fechas valido -> filtra; vacio/invalido -> lista todas (carga inicial)
+			$filtroFecha = (preg_match('/^\d{4}-\d{2}-\d{2}$/', (string)$fecha_inicio) && preg_match('/^\d{4}-\d{2}-\d{2}$/', (string)$fecha_fin))
+				? " AND FE.fecha_emision BETWEEN '".$fecha_inicio."' AND '".$fecha_fin."'" : "";
 			$tabla = '';
-			$consulta = "SELECT FE.id, FE.fecha_emision, FE.establecimiento, FE.punto_emision, FE.secuencial, FE.total, FE.estado_sri, FE.clave_acceso, FE.cliente_razon_social, FE.cliente_email, FE.numero_autorizacion, FE.mensaje_error FROM sujeto_alumno A INNER JOIN alumno_representante R ON R.repre_id = A.alumno_repreid INNER JOIN facturas_electronicas FE ON FE.representante_id = R.repre_id WHERE A.alumno_id = ".$alumnoid." AND FE.fecha_emision BETWEEN '".$fecha_inicio."' AND '".$fecha_fin."' AND FE.estado_sri <> 'ANULADA' ORDER BY FE.fecha_emision DESC, FE.id DESC";
+			$consulta = "SELECT FE.id, FE.fecha_emision, FE.establecimiento, FE.punto_emision, FE.secuencial, FE.total, FE.estado_sri, FE.clave_acceso, FE.cliente_razon_social, FE.cliente_email, FE.numero_autorizacion, FE.mensaje_error FROM sujeto_alumno A INNER JOIN alumno_representante R ON R.repre_id = A.alumno_repreid INNER JOIN facturas_electronicas FE ON FE.representante_id = R.repre_id WHERE A.alumno_id = ".$alumnoid." AND FE.estado_sri <> 'ANULADA'".$filtroFecha." ORDER BY FE.fecha_emision DESC, FE.id DESC";
 			$datos = $this->ejecutarConsulta($consulta)->fetchAll();
 			$contador = 1;
 			foreach($datos as $rows){
@@ -1120,7 +1502,7 @@
 				$tabla .= '<tr><td>'.$contador.'</td><td>'.$rows['fecha_emision'].'</td><td>'.number_format((float)$rows['total'], 2, '.', '').'</td><td><strong>'.$numero.'</strong><br><small class="text-muted">Clave: '.$rows['clave_acceso'].'</small>'.$autorizacion.'</td><td>'.$rows['cliente_razon_social'].'<br><span class="badge '.$estadoClass.'">'.$estado.'</span>'.$error.'</td><td>'.$acciones.'</td></tr>';
 				$contador++;
 			}
-			if($tabla===''){ $tabla = '<tr><td colspan="6" class="text-center text-muted">No hay facturas generadas en el rango seleccionado.</td></tr>'; }
+			if($tabla===''){ $tabla = '<tr><td colspan="6" class="text-center text-muted">'.($filtroFecha === '' ? 'No hay facturas generadas.' : 'No hay facturas generadas en el rango seleccionado.').'</td></tr>'; }
 			return $tabla;
 		}
 
@@ -1690,7 +2072,7 @@
 				$tipoComprobante = '01';
 				$establecimiento = str_pad((string)($emisor['codigo_establecimiento'] ?? '001'), 3, '0', STR_PAD_LEFT);
 				$puntoEmision = str_pad((string)($emisor['punto_emision'] ?? '001'), 3, '0', STR_PAD_LEFT);
-				$secuencial = $this->reservarSecuencialFactura($conexion, $tipoComprobante, $establecimiento, $puntoEmision);
+				$secuencial = $this->reservarSecuencialFactura($conexion, $tipoComprobante, $establecimiento, $puntoEmision, (int)($config['secuencial_inicio'] ?? 1));
 				$codigoNumerico = $service->generarCodigoNumerico();
 				$fechaEmision = date('Y-m-d');
 				$claveAcceso = $service->generarClaveAcceso(date('dmY'), $tipoComprobante, $ruc, (string)($config['ambiente'] ?? '1'), $establecimiento.$puntoEmision, $secuencial, $codigoNumerico, (string)($config['tipo_emision'] ?? '1'));
