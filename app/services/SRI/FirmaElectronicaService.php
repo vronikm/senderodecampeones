@@ -10,7 +10,8 @@ class FirmaElectronicaService
 
     public function __construct(?array $config = null)
     {
-        $this->config = $config ?? require dirname(__DIR__, 3).'/config/sri.php';
+        $rutaSri = dirname(__DIR__, 3).'/config/sri.php';
+        $this->config = $config ?? (is_file($rutaSri) ? require $rutaSri : []);
     }
 
     public function cargarCertificado(?string $rutaCertificado = null, ?string $clave = null): bool
@@ -257,7 +258,7 @@ class FirmaElectronicaService
         $certDigest = base64_encode(hash('sha1', base64_decode($certB64), true));
 
         $parsed = openssl_x509_parse($this->certificado);
-        $issuerName = $this->formatearEmisor($parsed['issuer'] ?? []);
+        $issuerName = $this->formatearEmisor($parsed['issuer'] ?? [], base64_decode($certB64));
         $serial = (string)($parsed['serialNumber'] ?? '0');
         if (stripos($serial, '0x') === 0) {
             $serial = base_convert(substr($serial, 2), 16, 10);
@@ -281,20 +282,66 @@ class FirmaElectronicaService
         ];
     }
 
-    private function formatearEmisor($issuer): string
+    private function formatearEmisor($issuer, ?string $certDer = null): string
     {
         if (is_string($issuer)) {
             return $issuer;
         }
 
+        // El X509IssuerName debe coincidir con lo que produce el validador del
+        // SRI (Java X500Principal, formato RFC2253):
+        //  - orden INVERSO al DER del certificado, con TODOS los componentes;
+        //  - los atributos sin keyword RFC2253 (p.ej. organizationIdentifier de
+        //    certificados UANATACA) se emiten como  OID=#<hexDER del valor>.
+        // De lo contrario el SRI rechaza con error 39 ("el certificado firmante
+        // no es valido" / "no se ajusta a XAdES").
+        static $oids = [
+            'organizationIdentifier' => ['oid' => '2.5.4.97', 'der' => '0603550461'],
+        ];
+
         $partes = [];
-        foreach (['CN', 'O', 'OU', 'L', 'ST', 'C'] as $attr) {
-            if (!empty($issuer[$attr])) {
-                $partes[] = $attr.'='.$issuer[$attr];
+        foreach (array_reverse($issuer, true) as $attr => $valor) {
+            foreach ((array)$valor as $v) {
+                if (isset($oids[$attr])) {
+                    $hex = $certDer !== null
+                        ? $this->derValorTrasOid($certDer, $oids[$attr]['der'], (string)$v)
+                        : null;
+                    $partes[] = $oids[$attr]['oid'].'=#'.($hex ?? $this->derUtf8String((string)$v));
+                } else {
+                    $partes[] = $attr.'='.$v;
+                }
             }
         }
 
         return implode(',', $partes);
+    }
+
+    /**
+     * Devuelve, en hex, la codificacion DER (tag+long+valor) del AttributeValue
+     * que sigue al OID indicado dentro del certificado, validando que su
+     * contenido coincida con $valorEsperado (desambigua issuer vs subject).
+     */
+    private function derValorTrasOid(string $certDer, string $oidHex, string $valorEsperado): ?string
+    {
+        $hex = bin2hex($certDer);
+        $offset = 0;
+        while (($pos = strpos($hex, $oidHex, $offset)) !== false) {
+            $after = substr($hex, $pos + strlen($oidHex));
+            $len = hexdec(substr($after, 2, 2));          // long en forma corta (<128)
+            $tlv = substr($after, 0, 4 + $len * 2);       // tag + long + contenido
+            $contenido = @hex2bin(substr($after, 4, $len * 2));
+            if ($contenido === $valorEsperado) {
+                return $tlv;
+            }
+            $offset = $pos + strlen($oidHex);
+        }
+        return null;
+    }
+
+    /** Codifica un valor como DER UTF8String (fallback). */
+    private function derUtf8String(string $valor): string
+    {
+        return '0c'.sprintf('%02x', strlen($valor)).bin2hex($valor);
     }
 
     private function uid(): string
