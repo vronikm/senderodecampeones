@@ -278,7 +278,7 @@
 															<th>Fecha</th>
 															<th>Pago</th>
 															<th>Detalle</th>
-															<th>Alumno</th>
+															<th>Estado</th>
 															<th style="width:280px;">Opciones</th>
 														</tr>
 													</thead>

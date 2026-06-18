@@ -1671,7 +1671,7 @@
 				}
 				$autorizacion = !empty($rows['numero_autorizacion']) ? '<br><small class="text-success">Aut.: '.htmlspecialchars($rows['numero_autorizacion'], ENT_QUOTES, 'UTF-8').'</small>' : '';
 				$error = !empty($rows['mensaje_error']) ? '<br><small class="text-danger">'.htmlspecialchars($this->limpiarTextoFactura($rows['mensaje_error']), ENT_QUOTES, 'UTF-8').'</small>' : '';
-				$tabla .= '<tr><td>'.$contador.'</td><td>'.$rows['fecha_emision'].'</td><td>'.number_format((float)$rows['total'], 2, '.', '').'</td><td><strong>'.$numero.'</strong><br><small class="text-muted">Clave: '.$rows['clave_acceso'].'</small>'.$autorizacion.'</td><td>'.$rows['cliente_razon_social'].'<br><span class="badge '.$estadoClass.'">'.$estado.'</span>'.$error.'</td><td>'.$acciones.'</td></tr>';
+				$tabla .= '<tr><td>'.$contador.'</td><td>'.$rows['fecha_emision'].'</td><td>'.number_format((float)$rows['total'], 2, '.', '').'</td><td><strong>'.$numero.'</strong><br><small class="text-muted">Clave: '.$rows['clave_acceso'].'</small>'.$autorizacion.'</td><td><span class="badge '.$estadoClass.'">'.$estado.'</span>'.$error.'</td><td>'.$acciones.'</td></tr>';
 				$contador++;
 			}
 			if($tabla===''){ $tabla = '<tr><td colspan="6" class="text-center text-muted">'.($filtroFecha === '' ? 'No hay facturas generadas.' : 'No hay facturas generadas en el rango seleccionado.').'</td></tr>'; }
@@ -2099,16 +2099,23 @@
 				throw new \RuntimeException('La funcion mail() no esta disponible en este servidor.');
 			}
 
+			// Mismo esquema que "Enviar recibo" (pagosReciboEnvio), que si entrega:
+			// mail() con asunto y cuerpo en ISO-8859-1 y parte de texto 7bit.
+			// El esquema previo (UTF-8 / 8bit / asunto RFC2047) era rechazado por
+			// el MTA del servidor, por eso no llegaban los correos de facturas.
 			$destinatario = $this->limpiarHeaderCorreo($destinatario);
 			$from = $this->limpiarHeaderCorreo($from);
-			$asuntoLimpio = $this->limpiarHeaderCorreo($asunto);
-			$boundary = 'sri_factura_'.md5(uniqid('', true));
-			$headers = "From: ".$from."\r\n";
-			$headers .= "MIME-Version: 1.0\r\n";
-			$headers .= 'Content-Type: multipart/mixed; boundary="'.$boundary.'"';
-			$body = "--".$boundary."\r\n";
-			$body .= "Content-Type: text/plain; charset=UTF-8\r\n";
-			$body .= "Content-Transfer-Encoding: 8bit\r\n\r\n";
+			$asunto = mb_convert_encoding($this->limpiarHeaderCorreo($asunto), 'ISO-8859-1', 'UTF-8');
+			$mensaje = mb_convert_encoding($mensaje, 'ISO-8859-1', 'UTF-8');
+
+			$uid = md5(uniqid((string)time()));
+			$headers = "From: ".$from;
+			$headers .= "\r\nMIME-Version: 1.0\r\n";
+			$headers .= "Content-Type: multipart/mixed; boundary=\"".$uid."\"\r\n\r\n";
+
+			$body = "--".$uid."\r\n";
+			$body .= "Content-Type: text/plain; charset=ISO-8859-1\r\n";
+			$body .= "Content-Transfer-Encoding: 7bit\r\n\r\n";
 			$body .= $mensaje."\r\n\r\n";
 
 			foreach($adjuntos as $adjunto){
@@ -2119,14 +2126,14 @@
 				$filename = $this->nombreAdjuntoSeguro($adjunto['filename'] ?? basename($path));
 				$contentType = $this->limpiarHeaderCorreo($adjunto['content_type'] ?? 'application/octet-stream');
 				$contenido = chunk_split(base64_encode(file_get_contents($path)));
-				$body .= "--".$boundary."\r\n";
-				$body .= 'Content-Type: '.$contentType.'; name="'.$filename."\"\r\n";
+				$body .= "--".$uid."\r\n";
+				$body .= "Content-Type: ".$contentType."; name=\"".$filename."\"\r\n";
 				$body .= "Content-Transfer-Encoding: base64\r\n";
-				$body .= 'Content-Disposition: attachment; filename="'.$filename."\"\r\n\r\n";
-				$body .= $contenido."\r\n";
+				$body .= "Content-Disposition: attachment; filename=\"".$filename."\"\r\n\r\n";
+				$body .= $contenido."\r\n\r\n";
 			}
 
-			$body .= "--".$boundary."--";
+			$body .= "--".$uid."--";
 
 			$warningMail = '';
 			set_error_handler(function($errno, $errstr) use (&$warningMail){
@@ -2134,14 +2141,14 @@
 				return true;
 			});
 			try{
-				$enviado = mail($destinatario, '=?UTF-8?B?'.base64_encode($asuntoLimpio).'?=', $body, $headers);
+				$enviado = mail($destinatario, $asunto, $body, $headers);
 			}finally{
 				restore_error_handler();
 			}
 
 			if(!$enviado){
 				$detalle = $warningMail !== '' ? ' Detalle tecnico: '.$warningMail : '';
-				throw new \RuntimeException('El servidor no tiene configurado el correo saliente para enviar facturas. Configure SMTP o un servidor de correo en PHP/WAMP antes de usar esta opcion.'.$detalle);
+				throw new \RuntimeException('El servidor no confirmo el envio del correo (mail()). Verifique la configuracion del correo saliente del servidor.'.$detalle);
 			}
 
 			return true;
