@@ -73,14 +73,15 @@
 				$consulta_datos = "SELECT * FROM sujeto_alumno WHERE alumno_primernombre = '' ";
 			}
 
-			$consulta_datos .= " AND alumno_estado <> 'E'";
+			// Solo alumnos activos cuyo representante factura (repre_factura = 'S')
+			$consulta_datos .= " AND alumno_estado = 'A' AND alumno_repreid IN (SELECT repre_id FROM alumno_representante WHERE repre_factura = 'S')";
 			$datos = $this->ejecutarConsulta($consulta_datos);
 			$datos = $datos->fetchAll();
 			foreach($datos as $rows){
 				// Estado de facturacion del alumno (por prioridad):
+				//   ya tiene facturas (algun pago facturado, incluido via hermano) -> amarillo (btn-warning)
 				//   pagos pendientes de facturar -> azul (btn-info)
-				//   ya tiene facturas (no anuladas) -> amarillo (btn-warning)
-				//   sin pagos por facturar -> gris (btn-secondary)
+				//   sin pagos -> gris (btn-secondary)
 				$alumnoId = (int)$rows['alumno_id'];
 				try{
 					$estado = $this->ejecutarConsulta(
@@ -93,8 +94,13 @@
 										WHERE FD.pago_id = P.pago_id AND FE.estado_sri <> 'ANULADA'
 									)
 							) AS pagos_pendientes,
-							(SELECT COUNT(*) FROM facturas_electronicas FE2
-								WHERE FE2.alumno_id = ".$alumnoId." AND FE2.estado_sri <> 'ANULADA'
+							(SELECT COUNT(*) FROM alumno_pago P2
+								WHERE P2.pago_alumnoid = ".$alumnoId."
+									AND EXISTS (
+										SELECT 1 FROM facturas_electronicas_detalle FD2
+										INNER JOIN facturas_electronicas FE2 ON FE2.id = FD2.factura_electronica_id
+										WHERE FD2.pago_id = P2.pago_id AND FE2.estado_sri <> 'ANULADA'
+									)
 							) AS facturas"
 					)->fetch();
 					$pagosPendientes = (int)($estado['pagos_pendientes'] ?? 0);
@@ -104,12 +110,12 @@
 					$tieneFacturas   = 0;
 				}
 
-				if($pagosPendientes > 0){
+				if($tieneFacturas > 0){
+					$botonpago = "btn-warning";    // ya tiene facturas (incluye via hermano)
+				}elseif($pagosPendientes > 0){
 					$botonpago = "btn-info";       // pagos pendientes de facturar
-				}elseif($tieneFacturas > 0){
-					$botonpago = "btn-warning";    // ya tiene facturas generadas
 				}else{
-					$botonpago = "btn-secondary";  // sin pagos por facturar
+					$botonpago = "btn-secondary";  // sin pagos
 				}
 				if($rows['alumno_estado']=="I"){
 					$class = 'class="text-primary"';

@@ -1,6 +1,52 @@
 /* Enviar formularios via AJAX */
 const formularios_ajax = document.querySelectorAll(".FormularioAjax");
 
+/* Procesa la respuesta del servidor de forma robusta: lee el texto e intenta
+   parsear JSON. Si el servidor devolvio algo que no es JSON (p. ej. un warning
+   de PHP antes de la respuesta), muestra un mensaje claro y registra la
+   respuesta cruda en la consola para diagnostico. */
+function manejarRespuestaAjax(texto) {
+    let data;
+    try {
+        data = JSON.parse(texto);
+    } catch (e) {
+        console.error('Respuesta no-JSON del servidor:', texto);
+        const detalle = (texto || '').trim();
+        const detalleHtml = detalle
+            ? '<details style="text-align:left;margin-top:10px;"><summary style="cursor:pointer;">Ver detalle técnico del servidor</summary>' +
+              '<pre style="white-space:pre-wrap;word-break:break-word;max-height:220px;overflow:auto;background:#f5f5f5;padding:8px;border-radius:4px;font-size:12px;">' +
+              escaparHtml(detalle.slice(0, 2000)) + '</pre></details>'
+            : '<p style="margin-top:10px;"><em>(El servidor no devolvió contenido.)</em></p>';
+        Swal.fire({
+            icon: 'error',
+            title: 'Respuesta inesperada del servidor',
+            html: 'El servidor devolvió una respuesta que no se pudo procesar. ' +
+                  'Verifique si el registro se guardó antes de reintentar, para no duplicarlo.' +
+                  detalleHtml,
+            confirmButtonText: 'Aceptar'
+        });
+        return;
+    }
+    return alertas_ajax(data);
+}
+
+/* Escapa texto para insertarlo de forma segura como HTML. */
+function escaparHtml(s) {
+    return String(s).replace(/[&<>"']/g, function (c) {
+        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+}
+
+/* Falla de red/conexion (la peticion fetch fue rechazada). */
+function errorConexionAjax() {
+    Swal.fire({
+        icon: 'error',
+        title: 'Error de conexión',
+        text: 'No fue posible comunicarse con el servidor. Revise su conexión a internet e intente de nuevo.',
+        confirmButtonText: 'Aceptar'
+    });
+}
+
 formularios_ajax.forEach(formularios => {
 
     formularios.addEventListener("submit", function (e) {
@@ -24,18 +70,9 @@ formularios_ajax.forEach(formularios => {
             };
 
             fetch(action, config)
-                .then(respuesta => respuesta.json())
-                .then(respuesta => {
-                    return alertas_ajax(respuesta);
-                })
-                .catch(() => {
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Error de comunicación',
-                        text: 'No se pudo procesar la respuesta del servidor. Intente nuevamente.',
-                        confirmButtonText: 'Aceptar'
-                    });
-                });
+                .then(respuesta => respuesta.text())
+                .then(manejarRespuestaAjax)
+                .catch(errorConexionAjax);
 
             return; // Salir antes de mostrar la alerta
         }
@@ -67,18 +104,9 @@ formularios_ajax.forEach(formularios => {
                 };
 
                 fetch(action, config)
-                    .then(respuesta => respuesta.json())
-                    .then(respuesta => {
-                        return alertas_ajax(respuesta);
-                    })
-                    .catch(() => {
-                        Swal.fire({
-                            icon: 'error',
-                            title: 'Error de comunicación',
-                            text: 'No se pudo procesar la respuesta del servidor. Intente nuevamente.',
-                            confirmButtonText: 'Aceptar'
-                        });
-                    });
+                    .then(respuesta => respuesta.text())
+                    .then(manejarRespuestaAjax)
+                    .catch(errorConexionAjax);
             }
         });
 
