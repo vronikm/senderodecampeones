@@ -270,7 +270,7 @@
 			if($representante->rowCount()<=0){
 		        $alerta=[
 					"tipo"=>"simple",
-					"titulo"=>"OcurriÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â³ un error",
+					"titulo"=>"Ocurrió un error",
 					"texto"=>"El representante no se encuentra en el sistema",
 					"icono"=>"error"
 				];
@@ -289,7 +289,7 @@
 			if($repre_identificacion=="" || $repre_direccion=="" || $repre_correo=="" || $repre_celular==""){
 				$alerta=[
 					"tipo"=>"simple",
-					"titulo"=>"OcurriÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â³ un error",
+					"titulo"=>"Ocurrió un error",
 					"texto"=>"No ha completado los campos obligatorios del representante",
 					"icono"=>"error"
 				];
@@ -300,7 +300,7 @@
 				$alerta=[
 					"tipo"=>"simple",
 					"titulo"=>"Error",
-					"texto"=>"La cÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â©dula ingresada no es vÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¡lida",
+					"texto"=>"La cédula ingresada no es válida",
 					"icono"=>"error"
 				];
 				return json_encode($alerta);
@@ -310,7 +310,7 @@
 				$alerta=[
 					"tipo"=>"simple",
 					"titulo"=>"Error",
-					"texto"=>"El correo ingresado no es vÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¡lido",
+					"texto"=>"El correo ingresado no es válido",
 					"icono"=>"error"
 				];
 				return json_encode($alerta);
@@ -2411,7 +2411,7 @@
 			}else{
 			$alerta=[
 					"tipo"=>"simple",
-					"titulo"=>"OcurriÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â³ un error",
+					"titulo"=>"Ocurrió un error",
 					"texto"=>"No ha completado los campos obligatorios del alumno",
 					"icono"=>"error"
 				];
@@ -2422,7 +2422,7 @@
 		    if($alumno_identificacion=="" || $alumno_primernombre=="" || $alumno_apellidopaterno=="" || $alumno_fechanacimiento==""){
 			$alerta=[
 					"tipo"=>"simple",
-					"titulo"=>"OcurriÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â³ un error",
+					"titulo"=>"Ocurrió un error",
 					"texto"=>"No ha completado todos los campos que son obligatorios",
 					"icono"=>"error"
 				];
@@ -2433,7 +2433,7 @@
 		    if($this->verificarDatos("[a-zA-ZÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â©ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â­ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â³ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚ÂºÃƒÆ’Ã†â€™Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â°ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã†â€™Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â±ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‹Å“]{3,40}",$alumno_primernombre)){
 			$alerta=[
 					"tipo"=>"simple",
-					"titulo"=>"OcurriÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â³ un error",
+					"titulo"=>"Ocurrió un error",
 					"texto"=>"El nombre ingresado no coincide con el formato solicitado",
 					"icono"=>"error"
 				];
@@ -2445,8 +2445,8 @@
 		    if($check_alumno->rowCount()>0){
 			$alerta=[
 					"tipo"=>"simple",
-					"titulo"=>"OcurriÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â³ un error",
-					"texto"=>"La identificaciÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â³n ingresada ya se encuentra registrada, por favor verificar",
+					"titulo"=>"Ocurrió un error",
+					"texto"=>"La identificación ingresada ya se encuentra registrada, por favor verificar",
 					"icono"=>"error"
 				];
 				return json_encode($alerta);
@@ -2464,7 +2464,7 @@
 		            if(!mkdir($img_dir,0777)){
 			$alerta=[
 							"tipo"=>"simple",
-							"titulo"=>"OcurriÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â³ un error",
+							"titulo"=>"Ocurrió un error",
 							"texto"=>"No fue posible crear el directorio",
 							"icono"=>"error"
 						];
@@ -2476,7 +2476,7 @@
 		        if(mime_content_type($_FILES['alumno_foto']['tmp_name'])!="image/jpeg" && mime_content_type($_FILES['alumno_foto']['tmp_name'])!="image/png"){
 			$alerta=[
 						"tipo"=>"simple",
-						"titulo"=>"OcurriÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â³ un error",
+						"titulo"=>"Ocurrió un error",
 						"texto"=>"La imagen que ha seleccionado es de un formato no permitido",
 						"icono"=>"error"
 					];
@@ -2487,7 +2487,7 @@
 		        if(($_FILES['alumno_foto']['size']/1024)>4000){
 			$alerta=[
 						"tipo"=>"simple",
-						"titulo"=>"OcurriÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â³ un error",
+						"titulo"=>"Ocurrió un error",
 						"texto"=>"La imagen que ha seleccionado supera el peso permitido 4MB",
 						"icono"=>"error"
 					];
@@ -2521,7 +2521,7 @@
 				}else{
 					$alerta=[
 						"tipo"=>"simple",
-						"titulo"=>"OcurriÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â³ un error",
+						"titulo"=>"Ocurrió un error",
 						"texto"=>"No es posible subir la imagen al sistema en este momento",
 						"icono"=>"error"
 					];
@@ -2545,8 +2545,8 @@
 					if(!mkdir($img_cedula,0777)){
 						$alerta=[
 							"tipo"=>"simple",
-							"titulo"=>"OcurriÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â³ un error",
-							"texto"=>"No fue posible crear el directorio para almacenar las imÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¡genes de la cÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â©dula",
+							"titulo"=>"Ocurrió un error",
+							"texto"=>"No fue posible crear el directorio para almacenar las imágenes de la cédula",
 							"icono"=>"error"
 						];
 						return json_encode($alerta);
@@ -2557,7 +2557,7 @@
 				if(mime_content_type($_FILES['alumno_cedulaA']['tmp_name'])!="image/jpeg" && mime_content_type($_FILES['alumno_cedulaA']['tmp_name'])!="image/png"){
 					$alerta=[
 						"tipo"=>"simple",
-						"titulo"=>"OcurriÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â³ un error",
+						"titulo"=>"Ocurrió un error",
 						"texto"=>"La imagen que ha seleccionado es de un formato no permitido",
 						"icono"=>"error"
 					];
@@ -2568,7 +2568,7 @@
 				if(($_FILES['alumno_cedulaA']['size']/1024)>4000){
 					$alerta=[
 						"tipo"=>"simple",
-						"titulo"=>"OcurriÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â³ un error",
+						"titulo"=>"Ocurrió un error",
 						"texto"=>"La imagen que ha seleccionado supera el peso permitido 4MB",
 						"icono"=>"error"
 					];
@@ -2602,7 +2602,7 @@
 				}else{
 					$alerta=[
 						"tipo"=>"simple",
-						"titulo"=>"OcurriÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â³ un error",
+						"titulo"=>"Ocurrió un error",
 						"texto"=>"No es posible subir la imagen al sistema en este momento",
 						"icono"=>"error"
 					];
@@ -2621,8 +2621,8 @@
 					if(!mkdir($img_cedula,0777)){
 						$alerta=[
 							"tipo"=>"simple",
-							"titulo"=>"OcurriÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â³ un error",
-							"texto"=>"No fue posible crear el directorio para almacenar las imÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¡genes de la cÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â©dula",
+							"titulo"=>"Ocurrió un error",
+							"texto"=>"No fue posible crear el directorio para almacenar las imágenes de la cédula",
 							"icono"=>"error"
 						];
 						return json_encode($alerta);
@@ -2633,7 +2633,7 @@
 				if(mime_content_type($_FILES['alumno_cedulaR']['tmp_name'])!="image/jpeg" && mime_content_type($_FILES['alumno_cedulaR']['tmp_name'])!="image/png"){
 					$alerta=[
 						"tipo"=>"simple",
-						"titulo"=>"OcurriÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â³ un error",
+						"titulo"=>"Ocurrió un error",
 						"texto"=>"La imagen que ha seleccionado es de un formato no permitido",
 						"icono"=>"error"
 					];
@@ -2644,7 +2644,7 @@
 				if(($_FILES['alumno_cedulaR']['size']/1024)>4000){
 					$alerta=[
 						"tipo"=>"simple",
-						"titulo"=>"OcurriÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â³ un error",
+						"titulo"=>"Ocurrió un error",
 						"texto"=>"La imagen que ha seleccionado supera el peso permitido 4MB",
 						"icono"=>"error"
 					];
@@ -2678,7 +2678,7 @@
 				}else{
 					$alerta=[
 						"tipo"=>"simple",
-						"titulo"=>"OcurriÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â³ un error",
+						"titulo"=>"Ocurrió un error",
 						"texto"=>"No es posible subir la imagen al sistema en este momento",
 						"icono"=>"error"
 					];
@@ -2804,7 +2804,7 @@
 				$alerta=[
 					"tipo"=>"limpiar",
 					"titulo"=>"Alumno registrado",
-					"texto"=>"El alumno ".$alumno_identificacion." | ".$alumno_primernombre." ".$alumno_apellidopaterno." se registrÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â³ correctamente",
+					"texto"=>"El alumno ".$alumno_identificacion." | ".$alumno_primernombre." ".$alumno_apellidopaterno." se registró correctamente",
 					"icono"=>"success"
 				];
 
@@ -2976,8 +2976,8 @@
 
 				$alerta=[
 					"tipo"=>"simple",
-					"titulo"=>"OcurriÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â³ un error",
-					"texto"=>"No se pudo registrar la informaciÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â³n del alumno, por favor intente nuevamente",
+					"titulo"=>"Ocurrió un error",
+					"texto"=>"No se pudo registrar la información del alumno, por favor intente nuevamente",
 					"icono"=>"error"
 				];
 			}
@@ -3099,7 +3099,7 @@
 		    if($datos->rowCount()<=0){
 		        $alerta=[
 					"tipo"=>"simple",
-					"titulo"=>"OcurriÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â³ un error",
+					"titulo"=>"Ocurrió un error",
 					"texto"=>"El alumno no se encuentra en el sistema",
 					"icono"=>"error"
 				];
@@ -3136,7 +3136,7 @@
 			}else{
 				$alerta=[
 					"tipo"=>"simple",
-					"titulo"=>"OcurriÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â³ un error inesperado",
+					"titulo"=>"Ocurrió un error inesperado",
 					"texto"=>"No hemos podido actualizar el estado del alumno ".$datos['alumno_primernombre']." ".$datos['alumno_apellidopaterno'].", por favor intente nuevamente",
 					"icono"=>"error"
 				];
@@ -3154,7 +3154,7 @@
 		    if($datos->rowCount()<=0){
 		        $alerta=[
 					"tipo"=>"simple",
-					"titulo"=>"OcurriÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â³ un error",
+					"titulo"=>"Ocurrió un error",
 					"texto"=>"El alumno no se encuentra en el sistema",
 					"icono"=>"error"
 				];
@@ -3191,7 +3191,7 @@
 			}else{
 				$alerta=[
 					"tipo"=>"simple",
-					"titulo"=>"OcurriÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â³ un error inesperado",
+					"titulo"=>"Ocurrió un error inesperado",
 					"texto"=>"No hemos podido eliminar el alumno ".$datos['alumno_primernombre']." ".$datos['alumno_apellidopaterno'].", por favor intente nuevamente",
 					"icono"=>"error"
 				];
@@ -3209,7 +3209,7 @@
 		    if($datos->rowCount()<=0){
 		        $alerta=[
 					"tipo"=>"simple",
-					"titulo"=>"OcurriÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â³ un error",
+					"titulo"=>"Ocurrió un error",
 					"texto"=>"El alumno no se encuentra en el sistema",
 					"icono"=>"error"
 				];
@@ -3245,7 +3245,7 @@
 			}else{
 			$alerta=[
 					"tipo"=>"simple",
-					"titulo"=>"OcurriÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â³ un error",
+					"titulo"=>"Ocurrió un error",
 					"texto"=>"No ha completado los campos obligatorios del alumno",
 					"icono"=>"error"
 				];
@@ -3373,7 +3373,7 @@
 						$alerta=[
 							"tipo"=>"simple",
 							"titulo"=>"Error",
-							"texto"=>"No se creÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â³ el directorio",
+							"texto"=>"No se creó el directorio",
 							"icono"=>"error"
 						];
 						return json_encode($alerta);
@@ -3461,7 +3461,7 @@
 						$alerta=[
 							"tipo"=>"simple",
 							"titulo"=>"Error",
-							"texto"=>"No se creÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â³ el directorio",
+							"texto"=>"No se creó el directorio",
 							"icono"=>"error"
 						];
 						return json_encode($alerta);
@@ -3545,7 +3545,7 @@
 						$alerta=[
 							"tipo"=>"simple",
 							"titulo"=>"Error",
-							"texto"=>"No se creÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â³ el directorio",
+							"texto"=>"No se creó el directorio",
 							"icono"=>"error"
 						];
 						return json_encode($alerta);
@@ -3632,7 +3632,7 @@
 				$alerta=[
 					"tipo"=>"recargar",
 					"titulo"=>"Alumno actualizado",
-					"texto"=>"El alumno ".$alumno_identificacion." | ".$alumno_primernombre." ".$alumno_apellidopaterno." se actualizÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â³ correctamente",
+					"texto"=>"El alumno ".$alumno_identificacion." | ".$alumno_primernombre." ".$alumno_apellidopaterno." se actualizó correctamente",
 					"icono"=>"success"
 				];
 
@@ -3962,7 +3962,7 @@
 		    if($datos->rowCount()<=0){
 		        $alerta=[
 					"tipo"=>"simple",
-					"titulo"=>"OcurriÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â³ un error",
+					"titulo"=>"Ocurrió un error",
 					"texto"=>"El usuario no se encuentra en el sistema",
 					"icono"=>"error"
 				];
@@ -3984,7 +3984,7 @@
 		        if(!unlink($img_dir.$datos['usuario_foto'])){
 		            $alerta=[
 						"tipo"=>"simple",
-						"titulo"=>"OcurriÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â³ un error",
+						"titulo"=>"Ocurrió un error",
 						"texto"=>"Error al intentar eliminar la foto del usuario, por favor intente nuevamente",
 						"icono"=>"error"
 					];
@@ -3994,7 +3994,7 @@
 		    }else{
 			$alerta=[
 					"tipo"=>"simple",
-					"titulo"=>"OcurriÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â³ un error",
+					"titulo"=>"Ocurrió un error",
 					"texto"=>"No se encuentra la foto del usuario en el sistema",
 					"icono"=>"error"
 				];
@@ -4055,7 +4055,7 @@
 		    if($datos->rowCount()<=0){
 		        $alerta=[
 					"tipo"=>"simple",
-					"titulo"=>"OcurriÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â³ un error",
+					"titulo"=>"Ocurrió un error",
 					"texto"=>"No hemos encontrado el usuario en el sistema",
 					"icono"=>"error"
 				];
@@ -4072,7 +4072,7 @@
 		if($_FILES['usuario_foto']['name']=="" && $_FILES['usuario_foto']['size']<=0){
 			$alerta=[
 					"tipo"=>"simple",
-					"titulo"=>"OcurriÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â³ un error",
+					"titulo"=>"Ocurrió un error",
 					"texto"=>"No ha seleccionado una foto para el usuario",
 					"icono"=>"error"
 				];
@@ -4085,8 +4085,8 @@
 	            if(!mkdir($img_dir,0777)){
 	                $alerta=[
 						"tipo"=>"simple",
-						"titulo"=>"OcurriÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â³ un error inesperado",
-						"texto"=>"No se creÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â³ el directorio",
+						"titulo"=>"Ocurrió un error inesperado",
+						"texto"=>"No se creó el directorio",
 						"icono"=>"error"
 					];
 					return json_encode($alerta);
@@ -4098,7 +4098,7 @@
 	        if(mime_content_type($_FILES['usuario_foto']['tmp_name'])!="image/jpeg" && mime_content_type($_FILES['usuario_foto']['tmp_name'])!="image/png"){
 	            $alerta=[
 					"tipo"=>"simple",
-					"titulo"=>"OcurriÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â³ un error",
+					"titulo"=>"Ocurrió un error",
 					"texto"=>"La imagen que ha seleccionado es de un formato no permitido",
 					"icono"=>"error"
 				];
@@ -4110,7 +4110,7 @@
 	        if(($_FILES['usuario_foto']['size']/1024)>250){
 	            $alerta=[
 					"tipo"=>"simple",
-					"titulo"=>"OcurriÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â³ un error",
+					"titulo"=>"Ocurrió un error",
 					"texto"=>"La imagen que ha seleccionado supera el peso permitido",
 					"icono"=>"error"
 				];
@@ -4144,7 +4144,7 @@
 	        if(!move_uploaded_file($_FILES['usuario_foto']['tmp_name'],$img_dir.$foto)){
 	            $alerta=[
 					"tipo"=>"simple",
-					"titulo"=>"OcurriÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â³ un error",
+					"titulo"=>"Ocurrió un error",
 					"texto"=>"No podemos subir la imagen al sistema en este momento",
 					"icono"=>"error"
 				];
