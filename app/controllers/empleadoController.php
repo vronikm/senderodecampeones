@@ -753,8 +753,8 @@
                                 CASE WHEN empleado_estado = 'A' THEN 'Activo' WHEN empleado_estado = 'I' THEN 'Inactivo' ELSE 'Sin definir' END estado, 
                                 empleado_identificacion as identificacion, P.* 
                                 FROM sujeto_empleado P
-                                LEFT JOIN general_tabla_catalogo C ON P.empleado_especialidadid = C.catalogo_valor 
-								WHERE P.empleado_identificacion = ".$empleadoid;	
+                                LEFT JOIN general_tabla_catalogo C ON P.empleado_especialidadid = C.catalogo_valor
+								WHERE P.empleado_id = ".(int)$empleadoid;
 			$datos = $this->ejecutarConsulta($consulta_datos);
 			return $datos;
 		}
