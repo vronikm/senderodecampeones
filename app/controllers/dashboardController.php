@@ -4,6 +4,12 @@
 
 	class dashboardController extends mainModel{
 
+		/*----------  Listar sedes para el dashboard  ----------*/
+		public function obtenerSedes(){
+			$sedes=$this->ejecutarConsulta("SELECT sede_id, sede_nombre FROM general_sede ORDER BY sede_id ASC");
+			return $sedes;
+		}
+
 		/*----------  Obtener total alumnos activos  ----------*/
 		public function obtenerAlumnosActivos($sedeid){
 			$alumnosActivos=$this->ejecutarConsulta("SELECT count(*) totalActivos FROM sujeto_alumno WHERE alumno_estado='A' and alumno_sedeid = $sedeid");
