@@ -86,29 +86,25 @@
 										AND ac2.carnet_anio = YEAR(CURDATE())
 									) AS fecha_impresion
 								FROM sujeto_alumno
-								INNER JOIN (        
-									(
+								INNER JOIN (
+									 (
 										SELECT pago_alumnoid, MAX(FechaPension) FechaUltPension, MAX(pago_estado) Estado
 										FROM (
 												SELECT pago_fecha as FechaPension, pago_estado, pago_alumnoid
-														FROM alumno_pago 
+														FROM alumno_pago
 														WHERE pago_fecha >= DATE_FORMAT(CURDATE(), '%Y-%m-01')
 																AND pago_estado NOT IN ('E', 'J')
 																AND pago_rubroid = 'RPE'
 										) AS Pagos
 										GROUP BY pago_alumnoid
 										)
-										UNION                
+										UNION
 										SELECT descuento_alumnoid, DATE_FORMAT(CURDATE(), '%Y-%m-05') FechaPago, 'Al dìa' as Estado
 														from alumno_pago_descuento
 														where descuento_rubroid = 'DBC'
 																		and descuento_valor = 0
-																		and descuento_estado = 'S' 
-										UNION
-										SELECT alumno_id, '30-06-2026',  'Al día'
-												from sujeto_alumno
-												where alumno_id in (110,174, 209)
-									) EstadoPagos ON pago_alumnoid = alumno_id
+																		and descuento_estado = 'S'
+														) EstadoPagos ON pago_alumnoid = alumno_id
 								WHERE alumno_estado = 'A'
 								ORDER BY carnet_impreso ASC, alumno_apellidopaterno, alumno_apellidomaterno";
 
@@ -767,7 +763,6 @@
 			return $carnetsFinales;
 		}
 
-
 		/**
 		 * Crear un nuevo carnet para un alumno
 		 * @param int $alumno_id ID del alumno
@@ -824,8 +819,6 @@
 			$sql = "UPDATE alumno_carnet
 					SET carnet_fecha_impresion = NOW()
 					WHERE carnet_id IN ($ids_string)
-						AND carnet_mes = MONTH(CURDATE())
-						AND carnet_anio = YEAR(CURDATE())
 						AND carnet_fecha_impresion IS NULL";
 
 			return $this->ejecutarConsulta($sql);
@@ -1093,14 +1086,6 @@
 								AND apd.descuento_rubroid = 'DBC'
 								AND apd.descuento_valor = 0
 								AND apd.descuento_estado = 'S'
-								AND a.alumno_estado = 'A'
-								AND ac.carnet_alumnoid IS NULL
-							
-							UNION ALL
-
-							SELECT COUNT(*) as total
-									from sujeto_alumno
-									where alumno_id in (110,174, 209)
 								AND EXISTS (SELECT 1 FROM asistencia_asignahorario ah WHERE ah.asignahorario_alumnoid = a.alumno_id)
 								AND NOT EXISTS (
 									SELECT 1 FROM alumno_carnet ac
@@ -1173,22 +1158,6 @@
 									AND apd.descuento_rubroid = 'DBC'
 									AND apd.descuento_valor = 0
 									AND apd.descuento_estado = 'S'
-									AND EXISTS (SELECT 1 FROM asistencia_asignahorario ah WHERE ah.asignahorario_alumnoid = a.alumno_id)
-									AND NOT EXISTS (
-										SELECT 1 FROM alumno_carnet acp
-										WHERE acp.carnet_alumnoid = a.alumno_id
-											AND acp.carnet_mes = :mes
-											AND acp.carnet_anio = :anio
-											AND acp.carnet_fecha_impresion IS NOT NULL
-									)
-
-								UNION
-
-								-- Inclusion temporal: alumnos con pago de junio (RPE junio, carnet del mes actual)
-								SELECT DISTINCT a.alumno_id
-								FROM sujeto_alumno a
-								WHERE a.alumno_estado = 'A'
-									AND a.alumno_id IN (110, 174, 209)
 									AND EXISTS (SELECT 1 FROM asistencia_asignahorario ah WHERE ah.asignahorario_alumnoid = a.alumno_id)
 									AND NOT EXISTS (
 										SELECT 1 FROM alumno_carnet acp
@@ -1339,6 +1308,201 @@
 			]);
 
 			return $datos->fetchAll();
+		}
+
+		public function obtenerCarnetsAtrasadosPorIds($carnet_ids_string) {
+			$carnet_ids = explode(',', $carnet_ids_string);
+			$carnet_ids = array_map('intval', $carnet_ids);
+			$carnet_ids = array_filter($carnet_ids);
+
+			if(empty($carnet_ids)) {
+				return [];
+			}
+
+			$ids_string = implode(',', $carnet_ids);
+
+			$consulta = "SELECT
+								a.alumno_id,
+								a.alumno_identificacion,
+								CONCAT(a.alumno_primernombre, ' ', a.alumno_segundonombre, ' ',
+									a.alumno_apellidopaterno, ' ', a.alumno_apellidomaterno) as alumno_nombre,
+								a.alumno_imagen,
+								(SELECT h.horario_nombre
+									FROM asistencia_asignahorario ah
+									INNER JOIN asistencia_horario h ON h.horario_id = ah.asignahorario_horarioid
+									WHERE ah.asignahorario_alumnoid = a.alumno_id
+									LIMIT 1) as horario_nombre,
+								ac.carnet_id,
+								ac.carnet_mes,
+								ac.carnet_anio,
+								ac.carnet_fecha_emision,
+								0 as es_reimpresion,
+								COALESCE(cc.catcolor_hex, '#CCCCCC') as color_hex,
+								'' as mes_nombre
+							FROM alumno_carnet ac
+							INNER JOIN sujeto_alumno a ON a.alumno_id = ac.carnet_alumnoid
+							LEFT JOIN carnet_mes_color cmc ON cmc.mcolor_mes = ac.carnet_mes
+								AND cmc.mcolor_activo = 1
+							LEFT JOIN carnet_catcolor cc ON cc.catcolor_id = cmc.mcolor_catcolorid
+							WHERE ac.carnet_id IN ($ids_string)
+								AND a.alumno_estado = 'A'
+								AND EXISTS (SELECT 1 FROM asistencia_asignahorario ah WHERE ah.asignahorario_alumnoid = a.alumno_id)
+							ORDER BY ac.carnet_anio, ac.carnet_mes, a.alumno_apellidopaterno, a.alumno_apellidomaterno";
+
+			$datos = $this->ejecutarConsulta($consulta);
+			return $datos->fetchAll();
+		}
+
+		public function prepararImpresionAtrasada() {
+			$cedulas_raw = $_POST['cedulas'] ?? '';
+			$mes = (int)($_POST['mes'] ?? 0);
+			$anio = (int)($_POST['anio'] ?? 0);
+
+			preg_match_all('/\d{6,20}/', $cedulas_raw, $matches);
+			$cedulas = array_values(array_unique($matches[0] ?? []));
+
+			if(empty($cedulas)) {
+				return json_encode([
+					"tipo" => "simple",
+					"titulo" => "Sin cedulas",
+					"texto" => "Ingrese al menos una cedula valida",
+					"icono" => "warning"
+				]);
+			}
+
+			if($mes < 1 || $mes > 12 || $anio < 2000 || $anio > ((int)date('Y') + 1)) {
+				return json_encode([
+					"tipo" => "simple",
+					"titulo" => "Periodo invalido",
+					"texto" => "Seleccione un mes y anio validos para la impresion atrasada",
+					"icono" => "warning"
+				]);
+			}
+
+			$placeholders = [];
+			$parametros = [
+				':mes' => $mes,
+				':anio' => $anio
+			];
+
+			foreach($cedulas as $idx => $cedula) {
+				$key = ':cedula_' . $idx;
+				$placeholders[] = $key;
+				$parametros[$key] = $cedula;
+			}
+
+			$consulta = "SELECT
+							a.alumno_id,
+							a.alumno_identificacion,
+							CONCAT_WS(' ', a.alumno_primernombre, a.alumno_segundonombre, a.alumno_apellidopaterno, a.alumno_apellidomaterno) as nombre,
+							a.alumno_estado,
+							EXISTS (
+								SELECT 1
+								FROM asistencia_asignahorario ah
+								WHERE ah.asignahorario_alumnoid = a.alumno_id
+							) as tiene_horario,
+							(
+								EXISTS (
+									SELECT 1
+									FROM alumno_pago ap
+									WHERE ap.pago_alumnoid = a.alumno_id
+										AND MONTH(ap.pago_fecha) = :mes
+										AND YEAR(ap.pago_fecha) = :anio
+										AND ap.pago_estado NOT IN ('E', 'J')
+										AND ap.pago_rubroid = 'RPE'
+								)
+								OR EXISTS (
+									SELECT 1
+									FROM alumno_pago_descuento apd
+									WHERE apd.descuento_alumnoid = a.alumno_id
+										AND apd.descuento_rubroid = 'DBC'
+										AND apd.descuento_valor = 0
+										AND apd.descuento_estado = 'S'
+								)
+							) as tiene_pago
+						FROM sujeto_alumno a
+						WHERE a.alumno_identificacion IN (" . implode(',', $placeholders) . ")
+						ORDER BY a.alumno_apellidopaterno, a.alumno_apellidomaterno";
+
+			$alumnos = $this->ejecutarConsulta($consulta, $parametros)->fetchAll();
+			$encontradas = array_column($alumnos, 'alumno_identificacion');
+			$no_encontradas = array_diff($cedulas, $encontradas);
+			$errores = [];
+
+			foreach($no_encontradas as $cedula) {
+				$errores[] = "Cedula $cedula no encontrada";
+			}
+
+			$carnet_ids = [];
+
+			foreach($alumnos as $alumno) {
+				if($alumno['alumno_estado'] !== 'A') {
+					$errores[] = $alumno['nombre'] . " no esta activo";
+					continue;
+				}
+
+				if((int)$alumno['tiene_horario'] !== 1) {
+					$errores[] = $alumno['nombre'] . " no tiene horario asignado";
+					continue;
+				}
+
+				if((int)$alumno['tiene_pago'] !== 1) {
+					$errores[] = $alumno['nombre'] . " no tiene pago valido para " . $this->nombreMes($mes) . "/" . $anio;
+					continue;
+				}
+
+				$consultaCarnet = "SELECT carnet_id
+									FROM alumno_carnet
+									WHERE carnet_alumnoid = :alumno_id
+										AND carnet_mes = :mes
+										AND carnet_anio = :anio
+									ORDER BY carnet_id DESC
+									LIMIT 1";
+
+				$datosCarnet = $this->ejecutarConsulta($consultaCarnet, [
+					':alumno_id' => $alumno['alumno_id'],
+					':mes' => $mes,
+					':anio' => $anio
+				]);
+
+				if($datosCarnet->rowCount() > 0) {
+					$carnet = $datosCarnet->fetch();
+					$carnet_ids[] = (int)$carnet['carnet_id'];
+				} else {
+					$nuevoCarnet = $this->crearCarnet($alumno['alumno_id'], $mes, $anio);
+					$carnet_ids[] = (int)$nuevoCarnet['carnet_id'];
+				}
+			}
+
+			$carnet_ids = array_values(array_unique(array_filter($carnet_ids)));
+
+			if(empty($carnet_ids)) {
+				return json_encode([
+					"tipo" => "simple",
+					"titulo" => "Sin carnets para imprimir",
+					"texto" => empty($errores) ? "No se pudo preparar el lote atrasado" : implode("; ", $errores),
+					"icono" => "warning"
+				]);
+			}
+
+			$ids_atrasada = implode(',', $carnet_ids);
+			$_SESSION['carnet_impresion_atrasada_ids'] = $ids_atrasada;
+			$token_atrasada = rtrim(strtr(base64_encode($ids_atrasada), '+/', '-_'), '=');
+			$firma_atrasada = hash_hmac('sha256', $ids_atrasada, session_id());
+			session_write_close();
+
+			$texto = "Se prepararon " . count($carnet_ids) . " carnets atrasados para impresion";
+			if(!empty($errores)) {
+				$texto .= ". Avisos: " . implode("; ", $errores);
+			}
+
+			return json_encode([
+				"tipo" => "redireccionar",
+				"titulo" => "Impresion atrasada preparada",
+				"texto" => $texto,
+				"icono" => empty($errores) ? "success" : "warning",
+				"url" => APP_URL . "carnetPDF/?modo=atrasada&atrasada=" . rawurlencode($token_atrasada) . "&firma=" . $firma_atrasada
+			]);
 		}
 
 		public function prepararImpresionMensual() {

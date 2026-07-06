@@ -16,8 +16,10 @@ if(!is_dir($tempDir)) {
 
 $alumno_ids_reimpresion = '';
 $carnet_ids_mensual = '';
+$carnet_ids_atrasada = '';
 $modo_reimpresion = false;
 $modo_mensual = (isset($_GET['modo']) && $_GET['modo'] === 'mensual');
+$modo_atrasada = (isset($_GET['modo']) && $_GET['modo'] === 'atrasada');
 $carnetsData = [];
 
 // Respaldo para producciÃ³n: si RewriteRule pierde el query string, recuperarlo desde REQUEST_URI.
@@ -25,7 +27,7 @@ if(!isset($_GET['modo']) && !isset($_GET['reimpresion']) && !isset($_GET['mensua
     $query_string_recuperado = parse_url($_SERVER['REQUEST_URI'], PHP_URL_QUERY);
     if(!empty($query_string_recuperado)) {
         parse_str($query_string_recuperado, $parametros_recuperados);
-        foreach(['modo', 'reimpresion', 'mensual', 'firma'] as $parametro_pdf) {
+        foreach(['modo', 'reimpresion', 'mensual', 'atrasada', 'firma'] as $parametro_pdf) {
             if(!isset($_GET[$parametro_pdf]) && isset($parametros_recuperados[$parametro_pdf])) {
                 $_GET[$parametro_pdf] = $parametros_recuperados[$parametro_pdf];
             }
@@ -95,11 +97,43 @@ if(isset($_SESSION['carnet_impresion_mensual_ids'])) {
     unset($_SESSION['carnet_impresion_mensual_ids']);
 }
 
+// Leer lote atrasado firmado. Se usa para imprimir carnets de meses anteriores sin cobro ROT.
+if(!$modo_reimpresion && isset($_GET['atrasada'], $_GET['firma']) && $_GET['atrasada'] !== '' && $_GET['firma'] !== '') {
+    $token_atrasada = strtr($_GET['atrasada'], '-_', '+/');
+    $padding_atrasada = strlen($token_atrasada) % 4;
+    if($padding_atrasada > 0) {
+        $token_atrasada .= str_repeat('=', 4 - $padding_atrasada);
+    }
+
+    $ids_atrasada_decodificados = base64_decode($token_atrasada, true);
+    if($ids_atrasada_decodificados !== false && preg_match('/^\d+(,\d+)*$/', $ids_atrasada_decodificados)) {
+        $firma_atrasada_esperada = hash_hmac('sha256', $ids_atrasada_decodificados, session_id());
+        if(hash_equals($firma_atrasada_esperada, $_GET['firma'])) {
+            $carnet_ids_atrasada = $ids_atrasada_decodificados;
+            $modo_atrasada = true;
+            $contexto_pdf = 'atrasada_url_firmada';
+        }
+    }
+}
+
+if(!$modo_reimpresion && empty($carnet_ids_atrasada) && isset($_SESSION['carnet_impresion_atrasada_ids']) && !empty($_SESSION['carnet_impresion_atrasada_ids'])) {
+    $carnet_ids_atrasada = $_SESSION['carnet_impresion_atrasada_ids'];
+    $modo_atrasada = true;
+    $contexto_pdf = 'atrasada_sesion';
+}
+
+if(isset($_SESSION['carnet_impresion_atrasada_ids'])) {
+    unset($_SESSION['carnet_impresion_atrasada_ids']);
+}
+
 // Obtener carnets segun proceso firmado:
 // - reimpresion: solo alumnos seleccionados con check.
+// - atrasada: solo carnet_id preparados por cedulas y periodo anterior.
 // - mensual: solo carnet_id preparados por el boton Imprimir Todos.
 if($modo_reimpresion && !empty($alumno_ids_reimpresion)) {
     $carnetsData = $insCarnet->obtenerCarnetsReimpresion($alumno_ids_reimpresion);
+} elseif($modo_atrasada && !empty($carnet_ids_atrasada)) {
+    $carnetsData = $insCarnet->obtenerCarnetsAtrasadosPorIds($carnet_ids_atrasada);
 } elseif($modo_mensual && !empty($carnet_ids_mensual)) {
     $carnetsData = $insCarnet->obtenerCarnetsMensualesPorIds($carnet_ids_mensual);
 } elseif($modo_mensual) {
@@ -447,7 +481,9 @@ if(!empty($carnet_ids_nuevos)) {
 
 // Nombre del archivo
 $nombreArchivo = "Carnets_" . date('Y-m-d_His') . ".pdf";
-if($resumen['reimpresiones'] > 0 && $resumen['nuevos'] == 0) {
+if($modo_atrasada) {
+    $nombreArchivo = "Carnets_Atrasados_" . date('Y-m-d_His') . ".pdf";
+} elseif($resumen['reimpresiones'] > 0 && $resumen['nuevos'] == 0) {
     $nombreArchivo = "Carnets_Reimpresion_" . date('Y-m-d_His') . ".pdf";
 } elseif($resumen['reimpresiones'] > 0 && $resumen['nuevos'] > 0) {
     $nombreArchivo = "Carnets_Mixto_" . date('Y-m-d_His') . ".pdf";

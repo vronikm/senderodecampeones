@@ -84,6 +84,13 @@
 							</button>
 
 							<button type="button" 
+									id="btn-impresion-atrasada"
+									class="btn btn-info btn-sm"
+									style="margin-right: 10px;">
+								<i class="fas fa-calendar-alt"></i> Impresion atrasada
+							</button>
+
+							<button type="button" 
 									id="btn-reimprimir-carnets"
 									class="btn btn-warning btn-sm">
 								<i class="fas fa-redo"></i> Reimprimir Carnets
@@ -174,6 +181,8 @@
 	<script>
 		var APP_URL = '<?php echo APP_URL; ?>';
 		var COBRAR_REIMPRESION = <?php echo $cobrarReimpresion ? 'true' : 'false'; ?>;
+		var MES_ATRASADO_DEFAULT = <?php echo (int)date('n', strtotime('first day of last month')); ?>;
+		var ANIO_ATRASADO_DEFAULT = <?php echo (int)date('Y', strtotime('first day of last month')); ?>;
 		var MES_ACTUAL = '<?php 
         $formatter = new IntlDateFormatter(
             "es_ES", IntlDateFormatter::NONE, IntlDateFormatter::NONE, 

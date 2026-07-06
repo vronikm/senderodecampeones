@@ -235,6 +235,156 @@ $(function () {
             });
         });
     });
+
+    function opcionesMeses(mesSeleccionado) {
+        var meses = [
+            'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+            'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
+        ];
+        var html = '';
+
+        meses.forEach(function(nombre, index) {
+            var valor = index + 1;
+            var selected = valor === parseInt(mesSeleccionado, 10) ? ' selected' : '';
+            html += '<option value="' + valor + '"' + selected + '>' + nombre + '</option>';
+        });
+
+        return html;
+    }
+
+    $('#btn-impresion-atrasada').on('click', function() {
+        var mesDefault = typeof MES_ATRASADO_DEFAULT !== 'undefined' ? MES_ATRASADO_DEFAULT : (new Date().getMonth() || 12);
+        var anioDefault = typeof ANIO_ATRASADO_DEFAULT !== 'undefined' ? ANIO_ATRASADO_DEFAULT : new Date().getFullYear();
+
+        Swal.fire({
+            title: 'Impresion atrasada',
+            html: `
+                <div style="text-align: left;">
+                    <p style="font-size: 14px; color: #6c757d;">
+                        Use esta opcion para carnets de un mes anterior que no se imprimieron fisicamente. No genera cobro ROT.
+                    </p>
+                    <label style="font-weight: 600;">Cedulas</label>
+                    <textarea id="swal-cedulas-atrasadas" class="swal2-textarea" placeholder="1150185476, 1150542411, 1151305164" style="height: 90px; margin: 6px 0 12px;"></textarea>
+                    <div style="display: flex; gap: 10px;">
+                        <div style="flex: 1;">
+                            <label style="font-weight: 600;">Mes</label>
+                            <select id="swal-mes-atrasado" class="swal2-select" style="width: 100%; margin: 6px 0;">
+                                ${opcionesMeses(mesDefault)}
+                            </select>
+                        </div>
+                        <div style="flex: 1;">
+                            <label style="font-weight: 600;">Anio</label>
+                            <input id="swal-anio-atrasado" class="swal2-input" type="number" value="${anioDefault}" min="2000" max="2100" style="width: 100%; margin: 6px 0;">
+                        </div>
+                    </div>
+                </div>
+            `,
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#17a2b8',
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: '<i class="fas fa-print"></i> Preparar PDF',
+            cancelButtonText: '<i class="fas fa-times"></i> Cancelar',
+            customClass: {
+                confirmButton: 'btn btn-info btn-sm mx-1',
+                cancelButton: 'btn btn-secondary btn-sm mx-1'
+            },
+            buttonsStyling: false,
+            width: '520px',
+            preConfirm: function() {
+                var cedulas = $('#swal-cedulas-atrasadas').val().trim();
+                var mes = parseInt($('#swal-mes-atrasado').val(), 10);
+                var anio = parseInt($('#swal-anio-atrasado').val(), 10);
+
+                if(!cedulas) {
+                    Swal.showValidationMessage('Ingrese al menos una cedula');
+                    return false;
+                }
+
+                if(!mes || mes < 1 || mes > 12 || !anio || anio < 2000 || anio > 2100) {
+                    Swal.showValidationMessage('Seleccione un periodo valido');
+                    return false;
+                }
+
+                return {
+                    cedulas: cedulas,
+                    mes: mes,
+                    anio: anio
+                };
+            }
+        }).then(function(result) {
+            if(!result.isConfirmed || !result.value) {
+                return;
+            }
+
+            var datos = result.value;
+            var ventanaPDF = window.open('', '_blank');
+            if(ventanaPDF) {
+                ventanaPDF.document.write('<p style="font-family: Arial; padding: 20px;">Preparando carnets atrasados...</p>');
+            }
+
+            Swal.fire({
+                title: 'Preparando PDF...',
+                text: 'Validando cedulas y periodo',
+                allowOutsideClick: false,
+                showConfirmButton: false,
+                didOpen: function() {
+                    Swal.showLoading();
+                }
+            });
+
+            $.ajax({
+                url: APP_URL + 'app/ajax/carnetAjax.php',
+                type: 'POST',
+                data: {
+                    modulo_carnet: 'preparar_impresion_atrasada',
+                    cedulas: datos.cedulas,
+                    mes: datos.mes,
+                    anio: datos.anio
+                },
+                dataType: 'json',
+                success: function(response) {
+                    if(response.tipo === 'redireccionar' && response.url) {
+                        if(ventanaPDF) {
+                            ventanaPDF.location.href = response.url;
+                        } else {
+                            window.open(response.url, '_blank');
+                        }
+
+                        Swal.fire({
+                            icon: response.icono || 'success',
+                            title: response.titulo || 'PDF preparado',
+                            text: response.texto || 'Carnets atrasados preparados',
+                            confirmButtonColor: '#17a2b8'
+                        });
+                    } else {
+                        if(ventanaPDF) {
+                            ventanaPDF.close();
+                        }
+
+                        Swal.fire({
+                            icon: response.icono || 'info',
+                            title: response.titulo || 'Aviso',
+                            text: response.texto || 'No se pudo preparar la impresion atrasada',
+                            confirmButtonColor: '#3085d6'
+                        });
+                    }
+                },
+                error: function() {
+                    if(ventanaPDF) {
+                        ventanaPDF.close();
+                    }
+
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: 'No se pudo preparar la impresion atrasada',
+                        confirmButtonColor: '#3085d6'
+                    });
+                }
+            });
+        });
+    });
     
     // Seleccionar/deseleccionar todos
     $('#seleccionarTodos').on('change', function() {
