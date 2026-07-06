@@ -222,6 +222,21 @@
 					"campo_nombre"=>"escuela_inscripcion",
 					"campo_marcador"=>":Inscripcion",
 					"campo_valor"=>$escuela_inscripcion
+				],
+				[
+					"campo_nombre"=>"escuela_verticalfondo",
+					"campo_marcador"=>":VerticalFondo",
+					"campo_valor"=>"vertical_fondo.jpg"
+				],
+				[
+					"campo_nombre"=>"escuela_verticalprincipal",
+					"campo_marcador"=>":VerticalPrincipal",
+					"campo_valor"=>"vertical_principal.jpg"
+				],
+				[
+					"campo_nombre"=>"escuela_verticalcolor",
+					"campo_marcador"=>":VerticalColor",
+					"campo_valor"=>"vertical_azul.png"
 				]
 			];
 
@@ -732,10 +747,15 @@
 
 			$sede_datos_reg=[
 				[
+					"campo_nombre"=>"sede_escuelaid",
+					"campo_marcador"=>":Escuelaid",
+					"campo_valor"=>1
+				],
+				[
 					"campo_nombre"=>"sede_nombre",
 					"campo_marcador"=>":Nombre",
 					"campo_valor"=>$sede_nombre
-				],	
+				],
 				[
 					"campo_nombre"=>"sede_direccion",
 					"campo_marcador"=>":Direccion",

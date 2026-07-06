@@ -2,100 +2,25 @@
 	use app\controllers\dashboardController;
 	$insDashboard = new dashboardController();
 
-	$alumnosActivosSedeL=$insDashboard->obtenerAlumnosActivos(1);	
-	$alumnosActivosSedeC=$insDashboard->obtenerAlumnosActivos(2);
+	// Sedes dinámicas (una tarjeta por cada registro de general_sede)
+	$sedes = $insDashboard->obtenerSedes()->fetchAll();
 
-	$alumnosInactivosSedeL=$insDashboard->obtenerAlumnosInactivos(1);	
-	$alumnosInactivosSedeC=$insDashboard->obtenerAlumnosInactivos(2);
+	// Helper: extrae un valor escalar de un PDOStatement; 0 si no hay fila
+	$valorEscalar = function($stmt, $col){
+		if($stmt && $stmt->rowCount() > 0){
+			$row = $stmt->fetch();
+			return isset($row[$col]) ? $row[$col] : 0;
+		}
+		return 0;
+	};
 
-	$pagosCanceladoSedeL=$insDashboard->obtenerPagosCancelados(1);	
-	$pagosCanceladoSedeC=$insDashboard->obtenerPagosCancelados(2);
+	// Totales globales del consolidado
+	$totalRepresentantes   = $valorEscalar($insDashboard->obtenerRepresentantes(),   "totalRepresentantes");
+	$totalAlumnosActivos   = $valorEscalar($insDashboard->totalAlumnosActivos(),     "totalAlumnosActivos");
+	$totalAlumnosInactivos = $valorEscalar($insDashboard->totalAlumnosInactivos(),   "totalAlumnosInactivos");
 
-	$pagosPendienteSedeL=$insDashboard->obtenerPagosPendientes(1);	
-	$pagosPendienteSedeC=$insDashboard->obtenerPagosPendientes(2);
-	
-	$representantes=$insDashboard->obtenerRepresentantes();
-	$alumnosActivos=$insDashboard->totalAlumnosActivos();
-	$alumnosInactivos=$insDashboard->totalAlumnosInactivos();
-	
-	if($alumnosActivosSedeL->rowCount()>0){
-		$alumnosActivosSedeL=$alumnosActivosSedeL->fetch();
-		$totalActivosSedeL=$alumnosActivosSedeL["totalActivos"];
-	}else{
-		$totalActivosSedeL= 0;
-	}
-
-	if($alumnosActivosSedeC->rowCount()>0){
-		$alumnosActivosSedeC=$alumnosActivosSedeC->fetch();
-		$totalActivosSedeC=$alumnosActivosSedeC["totalActivos"];
-	}else{
-		$totalActivosSedeC= 0;
-	}
-
-	if($alumnosInactivosSedeL->rowCount()>0){
-		$alumnosInactivosSedeL=$alumnosInactivosSedeL->fetch();
-		$totalInactivosSedeL=$alumnosInactivosSedeL["totalInactivos"];
-	}else{
-		$totalInactivosSedeL= 0;
-	}
-
-	if($alumnosInactivosSedeC->rowCount()>0){
-		$alumnosInactivosSedeC=$alumnosInactivosSedeC->fetch();
-		$totalInactivosSedeC=$alumnosInactivosSedeC["totalInactivos"];
-	}else{
-		$totalInactivosSedeC= 0;
-	}
-
-	if($pagosCanceladoSedeL->rowCount()>0){
-		$pagosCanceladoSedeL=$pagosCanceladoSedeL->fetch();
-		$totalCanceladoSedeL=$pagosCanceladoSedeL["totalCancelados"];
-	}else{
-		$totalCanceladoSedeL= 0;
-	}
-
-	if($pagosCanceladoSedeC->rowCount()>0){
-		$pagosCanceladoSedeC=$pagosCanceladoSedeC->fetch();
-		$totalCanceladoSedeC=$pagosCanceladoSedeC["totalCancelados"];
-	}else{
-		$totalCanceladoSedeC= 0;
-	}
-
-	if($pagosPendienteSedeL->rowCount()>0){
-		$pagosPendienteSedeL=$pagosPendienteSedeL->fetch();
-		$totalPendienteSedeL=isset($pagosPendienteSedeL["totalPendientes"]) ? $pagosPendienteSedeL["totalPendientes"] : 0;
-	}else{
-		$totalPendienteSedeL= 0;
-	}
-
-	if($pagosPendienteSedeC->rowCount()>0){
-		$pagosPendienteSedeC=$pagosPendienteSedeC->fetch();
-		$totalPendienteSedeC=isset($pagosPendienteSedeC["totalPendientes"]) ? $pagosPendienteSedeC["totalPendientes"] : 0;
-	}else{
-		$totalPendienteSedeC= 0;
-	}
-		if($representantes->rowCount()>0){
-		$representantes=$representantes->fetch();
-		$totalRepresentantes=$representantes["totalRepresentantes"];
-	}else{
-		$totalRepresentantes= 0;
-	}
-
-	if($alumnosActivos->rowCount()>0){
-		$alumnosActivos=$alumnosActivos->fetch();
-		$totalAlumnosActivos=$alumnosActivos["totalAlumnosActivos"];
-	}else{
-		$totalAlumnosActivos= 0;
-	}
-
-	if($alumnosInactivos->rowCount()>0){
-		$alumnosInactivos=$alumnosInactivos->fetch();
-		$totalAlumnosInactivos=$alumnosInactivos["totalAlumnosInactivos"];
-	}else{
-		$totalAlumnosInactivos= 0;
-	}
-
-	$totalCancelados = $totalCanceladoSedeL + $totalCanceladoSedeC;
-	$totalPendientes = $totalPendienteSedeL + $totalPendienteSedeC;
+	// Se acumula recorriendo las sedes (ver bucle de tarjetas)
+	$totalPendientes = 0;
 ?>
 
 <!DOCTYPE html>
@@ -169,9 +94,21 @@
 					
 					<div class="container-fluid">
 					<!-- Small boxes (Stat box) -->
+					<?php if(empty($sedes)): ?>
+						<div class="alert alert-info">No hay sedes registradas. Registre una sede para ver sus indicadores.</div>
+					<?php endif; ?>
+
+					<?php foreach($sedes as $sede):
+						$sedeId          = $sede["sede_id"];
+						$totalActivos    = $valorEscalar($insDashboard->obtenerAlumnosActivos($sedeId),   "totalActivos");
+						$totalInactivos  = $valorEscalar($insDashboard->obtenerAlumnosInactivos($sedeId), "totalInactivos");
+						$totalCancelado  = $valorEscalar($insDashboard->obtenerPagosCancelados($sedeId),  "totalCancelados");
+						$totalPendiente  = $valorEscalar($insDashboard->obtenerPagosPendientes($sedeId),  "totalPendientes");
+						$totalPendientes += $totalPendiente; // acumula para el consolidado
+					?>
 						<div class="card card-default">
 							<div class="card-header">
-								<h3 class="card-title">SEDE LA SALLE</h3>
+								<h3 class="card-title"><?php echo strtoupper(htmlspecialchars($sede["sede_nombre"])); ?></h3>
 								<div class="card-tools">
 									<button type="button" class="btn btn-tool" data-card-widget="collapse">
 										<i class="fas fa-minus"></i>
@@ -185,84 +122,7 @@
 									<!-- small box -->
 										<div class="small-box bg-info">
 											<div class="inner">
-											<h3><?php echo $totalActivosSedeL; ?></h3>
-											
-											<p>Alumnos activos</p>
-											</div>
-											<div class="icon">
-											<i class="ion ion-person"></i>
-											</div>
-											<a href="<?php echo APP_URL;?>alumnoList/" class="small-box-footer">Ver detalle <i class="fas fa-arrow-circle-right"></i></a>
-										</div>
-									</div>
-									<!-- ./col -->
-									<div class="col-lg-3 col-6">
-									<!-- small box -->
-									<div class="small-box bg-success">
-										<div class="inner">
-										<h3><?php echo $totalCanceladoSedeL; ?></h3>
-
-										<p>Pagos receptados mes</p>
-										</div>
-										<div class="icon">
-										<i class="ion ion-cash"></i>
-										</div>
-										<a href="<?php echo APP_URL;?>reportePagos/1" class="small-box-footer">Ver detalle <i class="fas fa-arrow-circle-right"></i></a>
-									</div>
-									</div>
-									<!-- ./col -->
-									<div class="col-lg-3 col-6">
-									<!-- small box -->
-									<div class="small-box bg-warning">
-										<div class="inner">
-										<h3><?php echo $totalInactivosSedeL; ?></h3>
-
-										<p>Alumnos inactivos</p>
-										</div>
-										<div class="icon">
-										<i class="ion ion-android-warning"></i>
-										</div>
-										<a href="<?php echo APP_URL;?>pagosList/" class="small-box-footer">Ver detalle <i class="fas fa-arrow-circle-right"></i></a>
-									</div>
-									</div>
-									<!-- ./col -->
-									<div class="col-lg-3 col-6">
-									<!-- small box -->
-									<div class="small-box bg-danger">
-										<div class="inner">
-										<h3><?php echo $totalPendienteSedeL; ?></h3>
-
-										<p>Pagos pendientes</p>
-										</div>
-										<div class="icon">
-										<i class="ion ion-cash"></i>
-										</div>
-										<a href="<?php echo APP_URL;?>reportePendientes/1" class="small-box-footer">Ver detalle <i class="fas fa-arrow-circle-right"></i></a>
-									
-									</div>
-									</div>
-									<!-- ./col -->
-								</div>
-							</div>
-						</div>
-						
-						<div class="card card-default">
-							<div class="card-header">
-								<h3 class="card-title">SEDE EL PARAISO</h3>
-								<div class="card-tools">
-									<button type="button" class="btn btn-tool" data-card-widget="collapse">
-										<i class="fas fa-minus"></i>
-									</button>
-								</div>
-							</div>
-
-							<div class="card-body">
-								<div class="row">
-									<div class="col-lg-3 col-6">
-									<!-- small box -->
-										<div class="small-box bg-info">
-											<div class="inner">
-											<h3><?php echo $totalActivosSedeC; ?></h3>
+											<h3><?php echo $totalActivos; ?></h3>
 
 											<p>Alumnos activos</p>
 											</div>
@@ -277,14 +137,14 @@
 									<!-- small box -->
 									<div class="small-box bg-success">
 										<div class="inner">
-										<h3><?php echo $totalCanceladoSedeC; ?></h3>
+										<h3><?php echo $totalCancelado; ?></h3>
 
 										<p>Pagos receptados mes</p>
 										</div>
 										<div class="icon">
 										<i class="ion ion-cash"></i>
 										</div>
-										<a href="<?php echo APP_URL;?>reportePagos/2" class="small-box-footer">Ver detalle <i class="fas fa-arrow-circle-right"></i></a>
+										<a href="<?php echo APP_URL;?>reportePagos/<?php echo $sedeId; ?>" class="small-box-footer">Ver detalle <i class="fas fa-arrow-circle-right"></i></a>
 									</div>
 									</div>
 									<!-- ./col -->
@@ -292,14 +152,14 @@
 									<!-- small box -->
 									<div class="small-box bg-warning">
 										<div class="inner">
-										<h3><?php echo $totalInactivosSedeC; ?></h3>
+										<h3><?php echo $totalInactivos; ?></h3>
 
 										<p>Alumnos inactivos</p>
 										</div>
 										<div class="icon">
 										<i class="ion ion-android-warning"></i>
 										</div>
-										<a href="<?php echo APP_URL;?>alumnoList/"  class="small-box-footer">Ver detalle <i class="fas fa-arrow-circle-right"></i></a>
+										<a href="<?php echo APP_URL;?>alumnoList/" class="small-box-footer">Ver detalle <i class="fas fa-arrow-circle-right"></i></a>
 									</div>
 									</div>
 									<!-- ./col -->
@@ -307,20 +167,22 @@
 									<!-- small box -->
 									<div class="small-box bg-danger">
 										<div class="inner">
-										<h3><?php echo $totalPendienteSedeC; ?></h3>
+										<h3><?php echo $totalPendiente; ?></h3>
 
 										<p>Pagos pendientes</p>
 										</div>
 										<div class="icon">
 										<i class="ion ion-cash"></i>
 										</div>
-										<a href="<?php echo APP_URL;?>reportePendientes/2" class="small-box-footer">Ver detalle <i class="fas fa-arrow-circle-right"></i></a>
+										<a href="<?php echo APP_URL;?>reportePendientes/<?php echo $sedeId; ?>" class="small-box-footer">Ver detalle <i class="fas fa-arrow-circle-right"></i></a>
 									</div>
 									</div>
 									<!-- ./col -->
 								</div>
 							</div>
 						</div>
+					<?php endforeach; ?>
+
 										<div class="card card-default" style="padding: 0.5rem;">
 					<div class="card-header" style="padding: 0.1rem 0.5rem;">
 						<h3 class="card-title">CONSOLIDADO</h3>

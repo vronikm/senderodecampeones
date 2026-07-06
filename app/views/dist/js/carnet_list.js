@@ -164,29 +164,73 @@ $(function () {
                         }
                     });
                     
-                    // Abrir PDF en nueva ventana
-                    window.open(APP_URL + 'carnetPDF/', '_blank');
-                    
-                    // Cerrar mensaje y recargar después de 2 segundos
-                    setTimeout(function() {
-                        Swal.fire({
-                            icon: 'success',
-                            title: '¡PDF Generado!',
-                            html: `
-                                <div style="padding: 15px;">
-                                    <i class="fas fa-check-circle" style="font-size: 48px; color: #28a745;"></i>
-                                    <p style="margin-top: 15px; font-size: 16px;">
-                                        Los carnets se han enviado a impresión
-                                    </p>
-                                </div>
-                            `,
-                            timer: 2000,
-                            showConfirmButton: false
-                        }).then(() => {
-                            // Recargar la página para actualizar el listado
-                            location.reload();
-                        });
-                    }, 2000);
+                    // Preparar lote exacto y abrir PDF en nueva ventana
+                    var ventanaPDF = window.open('', '_blank');
+                    if(ventanaPDF) {
+                        ventanaPDF.document.write('<p style="font-family: Arial; padding: 20px;">Preparando carnets...</p>');
+                    }
+
+                    $.ajax({
+                        url: APP_URL + 'app/ajax/carnetAjax.php',
+                        type: 'POST',
+                        data: {
+                            modulo_carnet: 'preparar_impresion_mensual'
+                        },
+                        dataType: 'json',
+                        success: function(response) {
+                            if(response.tipo === 'redireccionar' && response.url) {
+                                if(ventanaPDF) {
+                                    ventanaPDF.location.href = response.url;
+                                } else {
+                                    window.open(response.url, '_blank');
+                                }
+
+                                Swal.fire({
+                                    icon: 'success',
+                                    title: 'PDF Generado',
+                                    html: `
+                                        <div style="padding: 15px;">
+                                            <i class="fas fa-check-circle" style="font-size: 48px; color: #28a745;"></i>
+                                            <p style="margin-top: 15px; font-size: 16px;">
+                                                Los carnets se han enviado a impresion
+                                            </p>
+                                        </div>
+                                    `,
+                                    timer: 2000,
+                                    showConfirmButton: false
+                                }).then(() => {
+                                    location.reload();
+                                });
+                            } else {
+                                if(ventanaPDF) {
+                                    ventanaPDF.close();
+                                }
+
+                                Swal.fire({
+                                    icon: response.icono || 'info',
+                                    title: response.titulo || 'Aviso',
+                                    text: response.texto || 'No hay carnets para imprimir',
+                                    confirmButtonColor: '#3085d6'
+                                }).then(() => {
+                                    btn.prop('disabled', false);
+                                });
+                            }
+                        },
+                        error: function() {
+                            if(ventanaPDF) {
+                                ventanaPDF.close();
+                            }
+
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Error',
+                                text: 'No se pudo preparar el PDF de carnets',
+                                confirmButtonColor: '#3085d6'
+                            }).then(() => {
+                                btn.prop('disabled', false);
+                            });
+                        }
+                    });
                 }
             });
         });
@@ -208,92 +252,4 @@ $(function () {
             $('#seleccionarTodos').prop('checked', true);
         }
     });
-    
-    // Reimprimir carnets seleccionados
-    $('#btnReimprimirSeleccionados').on('click', function(e) {
-        e.preventDefault();
-        
-        var seleccionados = [];
-        $('.chk-reimpresion:checked').each(function() {
-            seleccionados.push($(this).val());
-        });
-        
-        if(seleccionados.length === 0) {
-            Swal.fire({
-                icon: 'warning',
-                title: 'Sin selección',
-                text: 'Debe seleccionar al menos un alumno para reimprimir',
-                confirmButtonColor: '#3085d6'
-            });
-            return;
-        }
-        
-        Swal.fire({
-            title: '¿Reimprimir carnets?',
-            html: `Se generará un cargo de <strong>$1.00</strong> por cada carnet extraviado.<br>
-                    Alumnos seleccionados: <strong>${seleccionados.length}</strong><br>
-                    Total a cobrar: <strong>$${seleccionados.length}.00</strong>`,
-            icon: 'question',
-            showCancelButton: true,
-            confirmButtonColor: '#28a745',
-            cancelButtonColor: '#d33',
-            confirmButtonText: 'Sí, procesar reimpresión',
-            cancelButtonText: 'Cancelar',
-        }).then((result) => {
-            if (result.isConfirmed) {
-                procesarReimpresion(seleccionados);
-            }
-        });
-    });
-    
-    // Función para procesar reimpresión
-    function procesarReimpresion(ids) {
-        $.ajax({
-            url: '<?php echo APP_URL; ?>app/ajax/carnetAjax.php',
-            type: 'POST',
-            data: {
-                modulo_carnet: 'procesar_reimpresion',
-                pagos_seleccionados: ids
-            },
-            dataType: 'json',
-            beforeSend: function() {
-                Swal.fire({
-                    title: 'Procesando...',
-                    text: 'Generando pagos y preparando carnets',
-                    allowOutsideClick: false,
-                    didOpen: () => {
-                        Swal.showLoading();
-                    }
-                });
-            },
-            success: function(response) {
-                if(response.tipo === 'redireccionar') {
-                    Swal.fire({
-                        icon: 'success',
-                        title: response.titulo,
-                        text: response.texto,
-                        confirmButtonColor: '#3085d6'
-                    }).then(() => {
-                        window.open(response.url, '_blank');
-                        location.reload();
-                    });
-                } else {
-                    Swal.fire({
-                        icon: response.icono,
-                        title: response.titulo,
-                        text: response.texto,
-                        confirmButtonColor: '#3085d6'
-                    });
-                }
-            },
-            error: function() {
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Error',
-                    text: 'Ocurrió un error al procesar la reimpresión',
-                    confirmButtonColor: '#d33'
-                });
-            }
-        });
-    }
 });

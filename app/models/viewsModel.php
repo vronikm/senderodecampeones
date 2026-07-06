@@ -25,7 +25,7 @@
 						  ,"formularioLPPDF","empleadoEntrada", "userMenu", "permisoList", "permisoNew"
 						  ,"empleadoAsistencias","agenda","empleadoAsistenciasDetalle","cobranzaPensionInactivos"
 						  ,"ingresosLugarEntrenamiento","estadisticas","reporteIngresosMorames","facturasList"
-						  ,"facturasNew","carnetList","carnetFoto","carnetConf","carnetPDF","carnetReimpresionPDF"
+						  ,"facturasNew","facturacionConfig","carnetList","carnetFoto","carnetConf","carnetPDF","carnetReimpresionPDF"
 						  ,"carnetFotoPDF","cumpleaniosList","cumpleaniosTarjeta","importarAlumnos","inscripcionEnlace"];
 
 			if(in_array($vista, $listaBlanca)){

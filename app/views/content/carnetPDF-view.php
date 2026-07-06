@@ -6,31 +6,115 @@ include 'app/lib/alphapdf.php';
 
 $insCarnet = new carnetController();
 
-// Generador de código QR
-$generator = new barcode_generator();
-$symbology = "qr";
-$optionsQR = array('sx'=>4, 'sy'=>4, 'p'=>-12);
-$tempDir = "app/views/dist/img/temp/";
+$generator  = new barcode_generator();
+$symbology  = "qr";
+$optionsQR  = array('sx'=>4, 'sy'=>4, 'p'=>-12);
+$tempDir    = "app/views/dist/img/temp/";
+if(!is_dir($tempDir)) {
+    @mkdir($tempDir, 0775, true);
+}
 
-// ============================================
-// OBTENER CARNETS UNIFICADOS
-// ============================================
-// Si hay IDs en sesión, son para reimpresión
 $alumno_ids_reimpresion = '';
+$carnet_ids_mensual = '';
+$modo_reimpresion = false;
+$modo_mensual = (isset($_GET['modo']) && $_GET['modo'] === 'mensual');
+$carnetsData = [];
 
-// ✅ LEER IDS DESDE SESIÓN
-if(isset($_SESSION['carnet_reimpresion_ids']) && !empty($_SESSION['carnet_reimpresion_ids'])) {
+// Respaldo para producciÃ³n: si RewriteRule pierde el query string, recuperarlo desde REQUEST_URI.
+if(!isset($_GET['modo']) && !isset($_GET['reimpresion']) && !isset($_GET['mensual']) && isset($_SERVER['REQUEST_URI'])) {
+    $query_string_recuperado = parse_url($_SERVER['REQUEST_URI'], PHP_URL_QUERY);
+    if(!empty($query_string_recuperado)) {
+        parse_str($query_string_recuperado, $parametros_recuperados);
+        foreach(['modo', 'reimpresion', 'mensual', 'firma'] as $parametro_pdf) {
+            if(!isset($_GET[$parametro_pdf]) && isset($parametros_recuperados[$parametro_pdf])) {
+                $_GET[$parametro_pdf] = $parametros_recuperados[$parametro_pdf];
+            }
+        }
+    }
+}
+
+$contexto_pdf = 'sin_modo';
+$query_keys_pdf = implode(',', array_keys($_GET));
+$session_keys_pdf = implode(',', array_keys($_SESSION ?? []));
+
+// Reimpresion tiene prioridad. Si el servidor pierde query string, se usa la sesion generada por AJAX.
+if(isset($_GET['reimpresion'], $_GET['firma']) && $_GET['reimpresion'] !== '' && $_GET['firma'] !== '') {
+    $token_reimpresion = strtr($_GET['reimpresion'], '-_', '+/');
+    $padding = strlen($token_reimpresion) % 4;
+    if($padding > 0) {
+        $token_reimpresion .= str_repeat('=', 4 - $padding);
+    }
+
+    $ids_decodificados = base64_decode($token_reimpresion, true);
+    if($ids_decodificados !== false && preg_match('/^\d+(,\d+)*$/', $ids_decodificados)) {
+        $firma_esperada = hash_hmac('sha256', $ids_decodificados, session_id());
+        if(hash_equals($firma_esperada, $_GET['firma'])) {
+            $alumno_ids_reimpresion = $ids_decodificados;
+            $modo_reimpresion = true;
+            $contexto_pdf = 'reimpresion_url_firmada';
+        }
+    }
+}
+
+if(!$modo_reimpresion && isset($_SESSION['carnet_reimpresion_ids']) && !empty($_SESSION['carnet_reimpresion_ids'])) {
     $alumno_ids_reimpresion = $_SESSION['carnet_reimpresion_ids'];
-    // Limpiar la sesión después de leer
+    $modo_reimpresion = true;
+    $contexto_pdf = 'reimpresion_sesion';
+}
+
+if(isset($_SESSION['carnet_reimpresion_ids'])) {
     unset($_SESSION['carnet_reimpresion_ids']);
 }
 
-// Obtener TODOS los carnets (nuevos + reimpresiones)
-$carnetsData = $insCarnet->obtenerCarnetsTodosUnificados($alumno_ids_reimpresion);
+// Leer lote mensual firmado. Permite reabrir el PDF aunque los carnets ya queden marcados como impresos.
+if(!$modo_reimpresion && isset($_GET['mensual'], $_GET['firma']) && $_GET['mensual'] !== '' && $_GET['firma'] !== '') {
+    $token_mensual = strtr($_GET['mensual'], '-_', '+/');
+    $padding_mensual = strlen($token_mensual) % 4;
+    if($padding_mensual > 0) {
+        $token_mensual .= str_repeat('=', 4 - $padding_mensual);
+    }
 
+    $ids_mensual_decodificados = base64_decode($token_mensual, true);
+    if($ids_mensual_decodificados !== false && preg_match('/^\d+(,\d+)*$/', $ids_mensual_decodificados)) {
+        $firma_mensual_esperada = hash_hmac('sha256', $ids_mensual_decodificados, session_id());
+        if(hash_equals($firma_mensual_esperada, $_GET['firma'])) {
+            $carnet_ids_mensual = $ids_mensual_decodificados;
+            $modo_mensual = true;
+            $contexto_pdf = 'mensual_url_firmada';
+        }
+    }
+}
+
+if(!$modo_reimpresion && empty($carnet_ids_mensual) && isset($_SESSION['carnet_impresion_mensual_ids']) && !empty($_SESSION['carnet_impresion_mensual_ids'])) {
+    $carnet_ids_mensual = $_SESSION['carnet_impresion_mensual_ids'];
+    $modo_mensual = true;
+    $contexto_pdf = 'mensual_sesion';
+}
+
+if(isset($_SESSION['carnet_impresion_mensual_ids'])) {
+    unset($_SESSION['carnet_impresion_mensual_ids']);
+}
+
+// Obtener carnets segun proceso firmado:
+// - reimpresion: solo alumnos seleccionados con check.
+// - mensual: solo carnet_id preparados por el boton Imprimir Todos.
+if($modo_reimpresion && !empty($alumno_ids_reimpresion)) {
+    $carnetsData = $insCarnet->obtenerCarnetsReimpresion($alumno_ids_reimpresion);
+} elseif($modo_mensual && !empty($carnet_ids_mensual)) {
+    $carnetsData = $insCarnet->obtenerCarnetsMensualesPorIds($carnet_ids_mensual);
+} elseif($modo_mensual) {
+    $carnetsData = $insCarnet->obtenerCarnetsPendientesMesActual();
+    if(empty($carnetsData)) {
+        $carnetsData = $insCarnet->obtenerCarnetsNoImpresosMesActual();
+    }
+}
 if(empty($carnetsData)) {
+    $mensaje_pdf = "No hay carnets para imprimir.\nProceso detectado: " . $contexto_pdf .
+        "\nParametros recibidos: " . ($query_keys_pdf !== "" ? $query_keys_pdf : "ninguno") .
+        "\nSesion disponible: " . ($session_keys_pdf !== "" ? "si" : "no");
+    error_log("[carnetPDF] sin datos contexto={$contexto_pdf} query_keys={$query_keys_pdf} session_keys={$session_keys_pdf}");
     echo "<script>
-        alert('No hay carnets para imprimir');
+        alert(" . json_encode($mensaje_pdf, JSON_UNESCAPED_UNICODE) . ");
         window.history.back();
     </script>";
     exit;

@@ -34,16 +34,24 @@
               </li>
 
               <li class="nav-item">
+                <a href="<?php echo APP_URL."facturasList/" ?>" class="nav-link <?php if ($url[0]=='facturasList' || $url[0]=='facturasNew') echo 'active'; else echo ''; ?>">
+                  <i class="nav-icon fa fa-money-check text-info"></i>
+                  <p>Facturación</p>
+                </a>
+              </li>
+
+              <li class="nav-item">
                 <a href="<?php echo APP_URL."carnetList/" ?>" class="nav-link <?php if ($url[0]=='carnetList') echo 'active'; else echo ''; ?>">
                   <i class="nav-icon far fa-address-card text-info"></i>
                   <p>Carnets</p>
                 </a>
               </li>
 
+              <?php $cumpleHoy = (new \app\controllers\cumpleaniosController())->contarCumpleaniosHoy(); ?>
               <li class="nav-item">
                 <a href="<?php echo APP_URL."cumpleaniosList/" ?>" class="nav-link <?php if ($url[0]=='cumpleaniosList' || $url[0]=='cumpleaniosTarjeta') echo 'active'; else echo ''; ?>">
                   <i class="nav-icon fas fa-birthday-cake" style="color:#ffe001;"></i>
-                  <p>Cumpleaños</p>
+                  <p>Cumpleaños<?php if ($cumpleHoy > 0) { ?> <span class="badge badge-danger right"><?php echo $cumpleHoy; ?></span><?php } ?></p>
                 </a>
               </li>
 
@@ -58,13 +66,6 @@
                 <a href="<?php echo APP_URL."agenda/" ?>" class="nav-link <?php if ($url[0]=='agenda') echo 'active'; else echo ''; ?>">
                   <i class="nav-icon fa fa-sticky-note text-info"></i>
                   <p>Agenda</p>
-                </a>
-              </li>
-
-              <li class="nav-item">
-                <a href="<?php echo APP_URL."facturasList/" ?>" class="nav-link <?php if ($url[0]=='facturasList' || $url[0]=='facturasNew') echo 'active'; else echo ''; ?>">
-                  <i class="nav-icon fa fa-money-check text-info"></i>
-                  <p>Facturación</p>
                 </a>
               </li>
 
@@ -315,8 +316,8 @@
               </li>
 
               <li class="nav-header">CONFIGURACIÓN</li>
-              <li class="nav-item <?php if ($url[0]=='escuelaNew' || $url[0]=='sedeList' || $url[0]=='tablasNew' || $url[0]=='catalogosNew' || $url[0]=='importarAlumnos') echo 'menu-open'; else echo ''; ?>">
-                <a href="#" class="nav-link <?php if ($url[0]=='escuelaNew' || $url[0]=='sedeList' || $url[0]=='tablasNew' || $url[0]=='catalogosNew' || $url[0]=='importarAlumnos') echo 'active'; else echo ''; ?>">
+              <li class="nav-item <?php if ($url[0]=='escuelaNew' || $url[0]=='sedeList' || $url[0]=='tablasNew' || $url[0]=='carnetConf' || $url[0]=='feriadosList' || $url[0]=='catalogosNew' || $url[0]=='importarAlumnos' || $url[0]=='facturacionConfig') echo 'menu-open'; else echo ''; ?>">
+                <a href="#" class="nav-link <?php if ($url[0]=='escuelaNew' || $url[0]=='sedeList' || $url[0]=='tablasNew' || $url[0]=='carnetConf' || $url[0]=='feriadosList' || $url[0]=='catalogosNew' || $url[0]=='importarAlumnos' || $url[0]=='facturacionConfig') echo 'active'; else echo ''; ?>">
                   <i class="nav-icon far fa-edit"></i>
                   <p>Configuración<i class="fas fa-angle-left right"></i></p>
                 </a>
@@ -364,6 +365,12 @@
                     <a href="<?php echo APP_URL."importarAlumnos/" ?>" class="nav-link <?php if ($url[0]=='importarAlumnos') echo 'active'; else echo ''; ?>" >
                       <i class="nav-icon far fa-file-csv text-info"></i>
                       <p>Importar Alumnos</p>
+                    </a>
+                  </li>
+                  <li class="nav-item">
+                    <a href="<?php echo APP_URL."facturacionConfig/" ?>" class="nav-link <?php if ($url[0]=='facturacionConfig') echo 'active'; else echo ''; ?>">
+                      <i class="nav-icon fas fa-cog text-info"></i>
+                      <p>Config. facturación</p>
                     </a>
                   </li>
 

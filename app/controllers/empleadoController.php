@@ -17,7 +17,7 @@
 			$empleado_celular			= $this->limpiarCadena($_POST['empleado_celular']);
 			$empleado_direccion			= $this->limpiarCadena($_POST['empleado_direccion']);
 			$empleado_tipopersonalid 	= $this->limpiarCadena($_POST['empleado_tipopersonalid']);
-			$empleado_especialidadid	= $this->limpiarCadena($_POST['empleado_especialidadid']);
+			$empleado_especialidadid	= $this->limpiarCadena($_POST['empleado_especialidadid'] ?? '');
 			$empleado_fechaingreso		= $this->limpiarCadena($_POST['empleado_fechaingreso']);
 			$empleado_genero 			= $this->limpiarCadena($_POST['empleado_genero']);
 			$empleado_sueldo			= $this->limpiarCadena($_POST['empleado_sueldo']);			
@@ -38,7 +38,7 @@
 
 			# Verificando campos obligatorios #
 			if($empleado_tipopersonalid == "TPP"){
-				$empleado_especialidadid = $this->limpiarCadena($_POST['empleado_especialidadid']);
+				$empleado_especialidadid = $this->limpiarCadena($_POST['empleado_especialidadid'] ?? '');
 			}else{				
 				$empleado_especialidadid = "";
 			}
@@ -439,7 +439,7 @@
 
 			# Verificando campos obligatorios #
 			if($empleado_tipopersonalid == "TPP"){
-				$empleado_especialidadid = $this->limpiarCadena($_POST['empleado_especialidadid']);
+				$empleado_especialidadid = $this->limpiarCadena($_POST['empleado_especialidadid'] ?? '');
 			}else{				
 				$empleado_especialidadid = "";
 			}
@@ -753,8 +753,8 @@
                                 CASE WHEN empleado_estado = 'A' THEN 'Activo' WHEN empleado_estado = 'I' THEN 'Inactivo' ELSE 'Sin definir' END estado, 
                                 empleado_identificacion as identificacion, P.* 
                                 FROM sujeto_empleado P
-                                LEFT JOIN general_tabla_catalogo C ON P.empleado_especialidadid = C.catalogo_valor 
-								WHERE P.empleado_identificacion = ".$empleadoid;	
+                                LEFT JOIN general_tabla_catalogo C ON P.empleado_especialidadid = C.catalogo_valor
+								WHERE P.empleado_id = ".(int)$empleadoid;
 			$datos = $this->ejecutarConsulta($consulta_datos);
 			return $datos;
 		}

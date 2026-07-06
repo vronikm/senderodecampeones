@@ -57,6 +57,14 @@
 		$nombreMes = $nombreMesEspanol." / ".$anio;
 
 		$saldo = "0.00";
+		$disabled = "";
+		$alert = "alert-info";
+		$alerta = "N";
+		$beca = "N";
+		$textodescuento = "";
+		$textodescripcion = "";
+		$rubro_valor = $sede['sede_pension'] ?? "0.00";
+		$rubro_inscripcion = $sede['sede_inscripcion'] ?? "0.00";
 		
 		$descuento=$insAlumno->AlumnoDescuento($alumno);
 		if($descuento->rowCount()==1){

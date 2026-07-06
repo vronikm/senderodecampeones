@@ -42,6 +42,25 @@
 		}
 
 		/**
+		 * Cuenta los alumnos activos que cumplen años hoy (para el badge del menu).
+		 * @return int
+		 */
+		public function contarCumpleaniosHoy(): int {
+			$consulta = "SELECT COUNT(*) AS total
+						 FROM sujeto_alumno
+						 WHERE DAY(alumno_fechanacimiento)   = :dia
+						   AND MONTH(alumno_fechanacimiento) = :mes
+						   AND alumno_estado = 'A'";
+
+			$datos = $this->ejecutarConsulta($consulta, [
+				':dia' => (int) date('d'),
+				':mes' => (int) date('m')
+			]);
+			$fila = $datos->fetch();
+			return (int) ($fila['total'] ?? 0);
+		}
+
+		/**
 		 * Obtiene los datos de un alumno por su ID.
 		 * @param int $alumno_id
 		 * @return \PDOStatement
