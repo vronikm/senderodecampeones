@@ -244,8 +244,8 @@
               </li>
 
               <li class="nav-header">REPORTES</li>
-              <li class="nav-item <?php if ($url[0]=='reportePagos' || $url[0]=='reporteRubros' || $url[0]=='reportePagosReceptadosResumen' || $url[0]=='reporteRepresentanteFactura') echo 'menu-open'; else echo ''; ?>">
-                <a href="#" class="nav-link <?php if ($url[0]=='reportePagos' || $url[0]=='reporteRubros' || $url[0]=='reportePagosReceptadosResumen' || $url[0]=='reporteRepresentanteFactura') echo 'active'; else echo ''; ?>">
+              <li class="nav-item <?php if ($url[0]=='reportePagos' || $url[0]=='reporteRubros' || $url[0]=='reportePagosReceptadosResumen' || $url[0]=='reporteRepresentanteFactura' || $url[0]=='reporteRepresentantesSede' || $url[0]=='reporteContactosEmergenciaSede') echo 'menu-open'; else echo ''; ?>">
+                <a href="#" class="nav-link <?php if ($url[0]=='reportePagos' || $url[0]=='reporteRubros' || $url[0]=='reportePagosReceptadosResumen' || $url[0]=='reporteRepresentanteFactura' || $url[0]=='reporteRepresentantesSede' || $url[0]=='reporteContactosEmergenciaSede') echo 'active'; else echo ''; ?>">
                   <i class="nav-icon fas fa-th"></i>
                   <p>Reportes<i class="fas fa-angle-left right"></i></p>
                 </a>
@@ -282,6 +282,24 @@
                     <a href="<?php echo APP_URL."reporteRepresentanteFactura/" ?>" class="nav-link <?php if ($url[0]=='reporteRepresentanteFactura') echo 'active'; else echo ''; ?>">
                       <i class="nav-icon far fa-circle text-info"></i>
                       <p>Facturación</p>
+                    </a>
+                  </li>
+                </ul>
+
+                <ul class="nav nav-treeview">
+                  <li class="nav-item">
+                    <a href="<?php echo APP_URL."reporteRepresentantesSede/" ?>" class="nav-link <?php if ($url[0]=='reporteRepresentantesSede') echo 'active'; else echo ''; ?>">
+                      <i class="nav-icon far fa-circle text-info"></i>
+                      <p>Representantes por sede</p>
+                    </a>
+                  </li>
+                </ul>
+
+                <ul class="nav nav-treeview">
+                  <li class="nav-item">
+                    <a href="<?php echo APP_URL."reporteContactosEmergenciaSede/" ?>" class="nav-link <?php if ($url[0]=='reporteContactosEmergenciaSede') echo 'active'; else echo ''; ?>">
+                      <i class="nav-icon far fa-circle text-info"></i>
+                      <p>Contactos emergencia por sede</p>
                     </a>
                   </li>
                 </ul>

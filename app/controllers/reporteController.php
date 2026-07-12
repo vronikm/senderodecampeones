@@ -380,6 +380,87 @@
 			}
 			return $option;
 		}
+		/*----------  Representantes por sede (una fila por cada alumno representado)  ----------*/
+		public function listarRepresentantesPorSede($sede_id){
+			$tabla="";
+			$sede_id = (int)$sede_id;
+
+			$consulta_datos="SELECT R.repre_identificacion,
+								CONCAT_WS(' ', R.repre_primernombre, R.repre_segundonombre, R.repre_apellidopaterno, R.repre_apellidomaterno) REPRESENTANTE,
+								R.repre_celular,
+								A.alumno_identificacion,
+								CONCAT_WS(' ', A.alumno_primernombre, A.alumno_segundonombre, A.alumno_apellidopaterno, A.alumno_apellidomaterno) ALUMNO,
+								S.sede_nombre SEDE
+							FROM alumno_representante R
+								INNER JOIN sujeto_alumno A ON A.alumno_repreid = R.repre_id
+								INNER JOIN general_sede S ON S.sede_id = A.alumno_sedeid
+							WHERE R.repre_estado in ('A','I')
+								AND A.alumno_estado in ('A','I')";
+
+			if($sede_id != 0){
+				$consulta_datos .= " AND A.alumno_sedeid = ".$sede_id;
+			}
+
+			$consulta_datos .= " ORDER BY REPRESENTANTE, S.sede_nombre, ALUMNO";
+
+			$datos = $this->ejecutarConsulta($consulta_datos);
+			$datos = $datos->fetchAll();
+			foreach($datos as $rows){
+				$tabla.='
+					<tr>
+						<td>'.$rows['repre_identificacion'].'</td>
+						<td>'.$rows['REPRESENTANTE'].'</td>
+						<td>'.$rows['repre_celular'].'</td>
+						<td>'.$rows['alumno_identificacion'].'</td>
+						<td>'.$rows['ALUMNO'].'</td>
+						<td>'.$rows['SEDE'].'</td>
+					</tr>';
+			}
+			return $tabla;
+		}
+
+		/*----------  Contactos de emergencia por sede (una fila por cada alumno que lo refiere)  ----------*/
+		public function listarContactosEmergenciaPorSede($sede_id){
+			$tabla="";
+			$sede_id = (int)$sede_id;
+
+			$consulta_datos="SELECT CE.cemer_nombre,
+								CE.cemer_celular,
+								PAR.catalogo_descripcion PARENTESCO,
+								A.alumno_identificacion,
+								CONCAT_WS(' ', A.alumno_primernombre, A.alumno_segundonombre, A.alumno_apellidopaterno, A.alumno_apellidomaterno) ALUMNO,
+								S.sede_nombre SEDE
+							FROM alumno_cemergencia CE
+								INNER JOIN sujeto_alumno A ON A.alumno_id = CE.cemer_alumnoid
+								INNER JOIN general_sede S ON S.sede_id = A.alumno_sedeid
+								LEFT JOIN (SELECT C.catalogo_valor, C.catalogo_descripcion
+											FROM general_tabla_catalogo C
+											INNER JOIN general_tabla T ON T.tabla_id = C.catalogo_tablaid
+											WHERE T.tabla_nombre = 'parentesco') PAR ON PAR.catalogo_valor = CE.cemer_parentesco
+							WHERE A.alumno_estado in ('A','I')";
+
+			if($sede_id != 0){
+				$consulta_datos .= " AND A.alumno_sedeid = ".$sede_id;
+			}
+
+			$consulta_datos .= " ORDER BY CE.cemer_nombre, S.sede_nombre, ALUMNO";
+
+			$datos = $this->ejecutarConsulta($consulta_datos);
+			$datos = $datos->fetchAll();
+			foreach($datos as $rows){
+				$tabla.='
+					<tr>
+						<td>'.$rows['cemer_nombre'].'</td>
+						<td>'.$rows['cemer_celular'].'</td>
+						<td>'.$rows['PARENTESCO'].'</td>
+						<td>'.$rows['alumno_identificacion'].'</td>
+						<td>'.$rows['ALUMNO'].'</td>
+						<td>'.$rows['SEDE'].'</td>
+					</tr>';
+			}
+			return $tabla;
+		}
+
 		public function resumenPagos($fecha_inicio, $fecha_fin, $sede_id){
 			$tabla="";
 			$VALOR_PAGADO = 0;

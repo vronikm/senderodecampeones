@@ -158,16 +158,8 @@ if(empty($carnetsData)) {
 $resumen = $insCarnet->obtenerResumenImpresion($carnetsData);
 
 // Obtener información de la escuela
-$sede = $insCarnet->informacionSede(1);
-if($sede->rowCount() == 1) {
-    $sede = $sede->fetch();
-} else {
-    echo "<script>
-        alert('Error: No se encontró información de la escuela');
-        window.close();
-    </script>";
-    exit;
-}
+// La información de la sede se obtiene dentro del bucle de cada carnet
+// ya que cada alumno puede estar en una sede diferente
 
 // ============================================
 // CONFIGURACIÓN PDF
@@ -247,6 +239,17 @@ foreach($carnetsData as $carnet) {
     
     // Determinar si es reimpresión
     $esReimpresion = ($carnet['es_reimpresion'] == 1);
+    
+    // Obtener información de la sede del alumno
+    $sede = $insCarnet->informacionSede($carnet['alumno_sedeid']);
+    if($sede->rowCount() != 1) {
+        // Si no se encuentra la sede, usar una por defecto (sede 1)
+        $sede = $insCarnet->informacionSede(1);
+        if($sede->rowCount() != 1) {
+            continue; // Saltar este carnet si no hay sede disponible
+        }
+    }
+    $sede = $sede->fetch();
     
     // Color del mes
     $colorHex = $carnet['color_hex'];
