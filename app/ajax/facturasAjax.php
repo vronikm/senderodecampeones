@@ -68,6 +68,11 @@
 			exit();
 		}
 
+		if($_POST['modulo_facturas']=="REGENERAR_FACTURA_DEVUELTA"){
+			echo $insAlumno->regenerarFacturaElectronicaDevuelta();
+			exit();
+		}
+
 		if($_POST['modulo_facturas']=="CONSULTAR_FACTURA_SRI"){
 			echo $insAlumno->consultarFacturaElectronicaSri();
 			exit();

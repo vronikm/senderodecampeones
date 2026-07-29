@@ -91,7 +91,7 @@
 									AND NOT EXISTS (
 										SELECT 1 FROM facturas_electronicas_detalle FD
 										INNER JOIN facturas_electronicas FE ON FE.id = FD.factura_electronica_id
-										WHERE FD.pago_id = P.pago_id AND FE.estado_sri <> 'ANULADA'
+										WHERE FD.pago_id = P.pago_id AND ".$this->estadoFacturaBloqueanteSql('FE')."
 									)
 							) AS pagos_pendientes,
 							(SELECT COUNT(*) FROM alumno_pago P2
@@ -99,7 +99,7 @@
 									AND EXISTS (
 										SELECT 1 FROM facturas_electronicas_detalle FD2
 										INNER JOIN facturas_electronicas FE2 ON FE2.id = FD2.factura_electronica_id
-										WHERE FD2.pago_id = P2.pago_id AND FE2.estado_sri <> 'ANULADA'
+										WHERE FD2.pago_id = P2.pago_id AND ".$this->estadoFacturaBloqueanteSql('FE2')."
 									)
 							) AS facturas"
 					)->fetch();
@@ -219,7 +219,7 @@
 										AND NOT EXISTS (
 											SELECT 1 FROM facturas_electronicas_detalle FD
 											INNER JOIN facturas_electronicas FE ON FE.id = FD.factura_electronica_id
-											WHERE FD.pago_id = P.pago_id AND FE.estado_sri <> 'ANULADA'
+											WHERE FD.pago_id = P.pago_id AND ".$this->estadoFacturaBloqueanteSql('FE')."
 										)
 								) RP ON RP.repre_id = RE.repre_id";
 
@@ -1379,16 +1379,32 @@
 			return ['codigo'=>'2', 'codigo_porcentaje'=>'0', 'porcentaje'=>0.00];
 		}
 
+		private function estadoFacturaBloqueanteSql($alias = 'FE'){
+			$alias = trim((string)$alias);
+			$campo = $alias !== '' ? $alias.'.estado_sri' : 'estado_sri';
+			return $campo." IN ('PENDIENTE','GENERADA','FIRMADA','ENVIADA','RECIBIDA','AUTORIZADO')";
+		}
+
+		private function esErrorSecuencialRegistrado($mensaje){
+			$mensaje = strtoupper((string)$mensaje);
+			return strpos($mensaje, 'SECUENCIAL REGISTRADO') !== false || preg_match('/(^|[^0-9])45([^0-9]|$)/', $mensaje);
+		}
+
+		private function mensajeSecuencialRegistrado(array $factura){
+			$numero = ($factura['establecimiento'] ?? '').'-'.($factura['punto_emision'] ?? '').'-'.($factura['secuencial'] ?? '');
+			return 'El SRI indica que el secuencial '.$numero.' ya fue registrado. No se debe reenviar la misma clave de acceso; consulte la factura y, si no esta autorizada, genere una nueva factura con el siguiente secuencial.';
+		}
+
 		private function reservarSecuencialFactura(\PDO $conexion, $tipoComprobante, $establecimiento, $puntoEmision, $inicio = 1){
 			$inicio = max(1, (int)$inicio);
 			$insert = $conexion->prepare("INSERT IGNORE INTO facturas_electronicas_secuenciales (tipo_comprobante, establecimiento, punto_emision, secuencial_actual) VALUES (:tipo, :estab, :pto, 0)");
 			$insert->execute([':tipo'=>$tipoComprobante, ':estab'=>$establecimiento, ':pto'=>$puntoEmision]);
-			// Proximo numero = max(secuencial_actual + 1, Nro. Inicio configurado): respeta
-			// el piso pero nunca retrocede (no se pueden repetir numeros ya emitidos).
-			// CAST a UNSIGNED: con PDO emulated prepares :inicio llega como string y
-			// GREATEST compararia como texto ('6' > '100'), ignorando el piso.
+			$maxStmt = $conexion->prepare("SELECT COALESCE(MAX(CAST(secuencial AS UNSIGNED)), 0) AS max_secuencial FROM facturas_electronicas WHERE tipo_comprobante = :tipo AND establecimiento = :estab AND punto_emision = :pto");
+			$maxStmt->execute([':tipo'=>$tipoComprobante, ':estab'=>$establecimiento, ':pto'=>$puntoEmision]);
+			$maxUsado = (int)($maxStmt->fetchColumn() ?: 0);
+			$inicioSeguro = max($inicio, $maxUsado + 1);
 			$update = $conexion->prepare("UPDATE facturas_electronicas_secuenciales SET secuencial_actual = LAST_INSERT_ID(GREATEST(secuencial_actual + 1, CAST(:inicio AS UNSIGNED))) WHERE tipo_comprobante = :tipo AND establecimiento = :estab AND punto_emision = :pto");
-			$update->execute([':tipo'=>$tipoComprobante, ':estab'=>$establecimiento, ':pto'=>$puntoEmision, ':inicio'=>$inicio]);
+			$update->execute([':tipo'=>$tipoComprobante, ':estab'=>$establecimiento, ':pto'=>$puntoEmision, ':inicio'=>$inicioSeguro]);
 			$secuencial = (int)$conexion->lastInsertId();
 			if($secuencial <= 0){ throw new \RuntimeException('No fue posible reservar el secuencial de la factura.'); }
 			return str_pad((string)$secuencial, 9, '0', STR_PAD_LEFT);
@@ -1412,7 +1428,7 @@
 				$placeholders[] = $key;
 				$params[$key] = $pagoId;
 			}
-			$sql = "SELECT P.pago_id, P.pago_valor, P.pago_periodo, P.pago_concepto, C.catalogo_valor AS codigo, C.catalogo_descripcion, CONCAT(C.catalogo_descripcion, ' ', P.pago_periodo, ', ', P.pago_concepto) AS detalle, CONCAT(AL.alumno_primernombre, ' ', AL.alumno_segundonombre, ' ', AL.alumno_apellidopaterno, ' ', AL.alumno_apellidomaterno) AS alumno FROM alumno_representante R INNER JOIN sujeto_alumno AL ON AL.alumno_repreid = R.repre_id INNER JOIN alumno_pago P ON P.pago_alumnoid = AL.alumno_id INNER JOIN general_tabla_catalogo C ON C.catalogo_valor = P.pago_rubroid WHERE R.repre_id = :representante AND P.pago_estado = 'C' AND P.pago_id IN (".implode(',', $placeholders).") AND NOT EXISTS (SELECT 1 FROM facturas_electronicas_detalle FD INNER JOIN facturas_electronicas FE ON FE.id = FD.factura_electronica_id WHERE FD.pago_id = P.pago_id AND FE.estado_sri <> 'ANULADA')";
+			$sql = "SELECT P.pago_id, P.pago_valor, P.pago_periodo, P.pago_concepto, C.catalogo_valor AS codigo, C.catalogo_descripcion, CONCAT(C.catalogo_descripcion, ' ', P.pago_periodo, ', ', P.pago_concepto) AS detalle, CONCAT(AL.alumno_primernombre, ' ', AL.alumno_segundonombre, ' ', AL.alumno_apellidopaterno, ' ', AL.alumno_apellidomaterno) AS alumno FROM alumno_representante R INNER JOIN sujeto_alumno AL ON AL.alumno_repreid = R.repre_id INNER JOIN alumno_pago P ON P.pago_alumnoid = AL.alumno_id INNER JOIN general_tabla_catalogo C ON C.catalogo_valor = P.pago_rubroid WHERE R.repre_id = :representante AND P.pago_estado = 'C' AND P.pago_id IN (".implode(',', $placeholders).") AND NOT EXISTS (SELECT 1 FROM facturas_electronicas_detalle FD INNER JOIN facturas_electronicas FE ON FE.id = FD.factura_electronica_id WHERE FD.pago_id = P.pago_id AND ".$this->estadoFacturaBloqueanteSql('FE').")";
 			$stmt = $conexion->prepare($sql);
 			$stmt->execute($params);
 			$pagos = $stmt->fetchAll(\PDO::FETCH_ASSOC);
@@ -1668,10 +1684,16 @@
 				$rideUrl = APP_URL.'app/ajax/facturasAjax.php?modulo_facturas=VER_RIDE&factura_id='.$rows['id'];
 				$estado = (string)$rows['estado_sri'];
 				$estadoClass = ($estado==='AUTORIZADO') ? 'badge-success' : (in_array($estado, ['DEVUELTA','NO_AUTORIZADO','ERROR'], true) ? 'badge-danger' : (in_array($estado, ['ENVIADA','RECIBIDA','FIRMADA'], true) ? 'badge-info' : 'badge-warning'));
+				$errorSecuencial = $this->esErrorSecuencialRegistrado($rows['mensaje_error'] ?? '');
 				$acciones = '<a href="'.$rideUrl.'" class="btn btn-xs btn-outline-info" target="_blank"><i class="fas fa-file-invoice"></i> RIDE</a> <a href="'.$xmlUrl.'" class="btn btn-xs btn-outline-secondary"><i class="fas fa-code"></i> XML</a>';
 				if($estado !== 'AUTORIZADO'){
-					$acciones .= ' <button type="button" class="btn btn-xs btn-success btn-emitir-sri" data-id="'.$rows['id'].'"><i class="fas fa-paper-plane"></i> Emitir SRI</button>';
+					if(!$errorSecuencial){
+						$acciones .= ' <button type="button" class="btn btn-xs btn-success btn-emitir-sri" data-id="'.$rows['id'].'"><i class="fas fa-paper-plane"></i> Emitir SRI</button>';
+					}
 					$acciones .= ' <button type="button" class="btn btn-xs btn-outline-primary btn-consultar-sri" data-id="'.$rows['id'].'"><i class="fas fa-sync-alt"></i> Consultar</button>';
+					if($errorSecuencial || in_array($estado, ['DEVUELTA','NO_AUTORIZADO'], true)){
+						$acciones .= ' <button type="button" class="btn btn-xs btn-warning btn-regenerar-factura" data-id="'.$rows['id'].'"><i class="fas fa-redo"></i> Nuevo secuencial</button>';
+					}
 				}elseif(filter_var($rows['cliente_email'] ?? '', FILTER_VALIDATE_EMAIL)){
 					$acciones .= ' <button type="button" class="btn btn-xs btn-outline-success btn-enviar-factura" data-id="'.$rows['id'].'" data-email="'.htmlspecialchars($rows['cliente_email'], ENT_QUOTES, 'UTF-8').'"><i class="fas fa-envelope"></i> Enviar</button>';
 				}
@@ -1916,6 +1938,16 @@
 					'estado'=>'AUTORIZADO',
 					'titulo'=>'Factura ya autorizada',
 					'mensaje'=>'La factura ya se encuentra autorizada por el SRI.',
+					'factura'=>$factura
+				];
+			}
+
+			if(!$soloConsulta && in_array((string)$factura['estado_sri'], ['DEVUELTA','ERROR','NO_AUTORIZADO'], true) && $this->esErrorSecuencialRegistrado($factura['mensaje_error'] ?? '')){
+				return [
+					'exito'=>false,
+					'estado'=>(string)$factura['estado_sri'],
+					'titulo'=>'Secuencial ya registrado',
+					'mensaje'=>$this->mensajeSecuencialRegistrado($factura),
 					'factura'=>$factura
 				];
 			}
@@ -2247,6 +2279,37 @@
 				return $this->respuestaJson('simple', 'Factura enviada', 'Se envio la factura '.$resultado['numero'].' a '.$resultado['email'].'.', 'success');
 			}catch(\Throwable $e){
 				return $this->respuestaJson('simple', 'No fue posible enviar', $e->getMessage(), 'error');
+			}
+		}
+
+		public function regenerarFacturaElectronicaDevuelta(){
+			$facturaId = (int)($_POST['factura_id'] ?? 0);
+			if($facturaId <= 0){
+				return $this->respuestaJson('simple', 'Factura no valida', 'No fue posible identificar la factura devuelta.', 'error');
+			}
+			try{
+				$conexion = $this->conectar();
+				$factura = $this->obtenerFacturaElectronicaPorId($conexion, $facturaId);
+				$estado = (string)($factura['estado_sri'] ?? '');
+				$mensaje = (string)($factura['mensaje_error'] ?? '');
+				if(!in_array($estado, ['DEVUELTA','NO_AUTORIZADO'], true) && !$this->esErrorSecuencialRegistrado($mensaje)){
+					return $this->respuestaJson('simple', 'Factura no regenerable', 'Solo se puede generar un nuevo secuencial para facturas devueltas, no autorizadas o con error de secuencial registrado.', 'warning');
+				}
+				$stmt = $conexion->prepare("SELECT pago_id FROM facturas_electronicas_detalle WHERE factura_electronica_id = :id AND pago_id IS NOT NULL ORDER BY id");
+				$stmt->execute([':id'=>$facturaId]);
+				$pagosIds = array_values(array_filter(array_map('intval', $stmt->fetchAll(\PDO::FETCH_COLUMN))));
+				if(empty($pagosIds)){
+					return $this->respuestaJson('simple', 'Sin pagos asociados', 'La factura devuelta no tiene pagos asociados para generar un nuevo secuencial.', 'warning');
+				}
+				$pagoStmt = $conexion->prepare("SELECT forma_pago FROM facturas_electronicas_pagos WHERE factura_electronica_id = :id ORDER BY id LIMIT 1");
+				$pagoStmt->execute([':id'=>$facturaId]);
+				$formaPago = (string)($pagoStmt->fetchColumn() ?: '');
+				$_POST['alumno'] = (int)$factura['alumno_id'];
+				$_POST['pagos'] = $pagosIds;
+				$_POST['forma_pago'] = $formaPago;
+				return $this->generarFacturaElectronica();
+			}catch(\Throwable $e){
+				return $this->respuestaJson('simple', 'No fue posible generar nuevo secuencial', $e->getMessage(), 'error');
 			}
 		}
 

@@ -738,6 +738,22 @@
 			ejecutarAccionSri($(this).data("id"), "CONSULTAR_FACTURA_SRI", "Consultando autorizacion");
 		});
 
+		$(document).on("click", ".btn-regenerar-factura", function(){
+			const facturaId = $(this).data("id");
+			Swal.fire({
+				title: "Generar nuevo secuencial",
+				text: "Se creara una nueva factura para los mismos pagos. La factura devuelta no se reenviara al SRI.",
+				icon: "warning",
+				showCancelButton: true,
+				confirmButtonText: "Generar nueva",
+				cancelButtonText: "Cancelar"
+			}).then((result) => {
+				if(result.isConfirmed){
+					ejecutarAccionSri(facturaId, "REGENERAR_FACTURA_DEVUELTA", "Generando nueva factura", "Se reservara el siguiente secuencial y se enviara al SRI.");
+				}
+			});
+		});
+
 		$(document).on("click", ".btn-enviar-factura", function(){
 			const facturaId = $(this).data("id");
 			const email = $(this).data("email") || "";
