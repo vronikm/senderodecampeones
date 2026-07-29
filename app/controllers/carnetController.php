@@ -1017,6 +1017,7 @@
 							CONCAT(a.alumno_primernombre, ' ', a.alumno_segundonombre, ' ',
 								a.alumno_apellidopaterno, ' ', a.alumno_apellidomaterno) as alumno_nombre,
 							a.alumno_imagen,
+							a.alumno_sedeid,
 							h.horario_nombre,
 							ac.carnet_id,
 							ac.carnet_mes,
@@ -1119,6 +1120,7 @@
 								CONCAT(a.alumno_primernombre, ' ', a.alumno_segundonombre, ' ',
 									a.alumno_apellidopaterno, ' ', a.alumno_apellidomaterno) as alumno_nombre,
 								a.alumno_imagen,
+								a.alumno_sedeid,
 								(SELECT h.horario_nombre
 									FROM asistencia_asignahorario ah
 									INNER JOIN asistencia_horario h ON h.horario_id = ah.asignahorario_horarioid
@@ -1227,6 +1229,7 @@
 								CONCAT(a.alumno_primernombre, ' ', a.alumno_segundonombre, ' ',
 									a.alumno_apellidopaterno, ' ', a.alumno_apellidomaterno) as alumno_nombre,
 								a.alumno_imagen,
+								a.alumno_sedeid,
 								(SELECT h.horario_nombre
 									FROM asistencia_asignahorario ah
 									INNER JOIN asistencia_horario h ON h.horario_id = ah.asignahorario_horarioid
@@ -1279,6 +1282,7 @@
 								CONCAT(a.alumno_primernombre, ' ', a.alumno_segundonombre, ' ',
 									a.alumno_apellidopaterno, ' ', a.alumno_apellidomaterno) as alumno_nombre,
 								a.alumno_imagen,
+								a.alumno_sedeid,
 								(SELECT h.horario_nombre
 									FROM asistencia_asignahorario ah
 									INNER JOIN asistencia_horario h ON h.horario_id = ah.asignahorario_horarioid
@@ -1327,6 +1331,7 @@
 								CONCAT(a.alumno_primernombre, ' ', a.alumno_segundonombre, ' ',
 									a.alumno_apellidopaterno, ' ', a.alumno_apellidomaterno) as alumno_nombre,
 								a.alumno_imagen,
+								a.alumno_sedeid,
 								(SELECT h.horario_nombre
 									FROM asistencia_asignahorario ah
 									INNER JOIN asistencia_horario h ON h.horario_id = ah.asignahorario_horarioid

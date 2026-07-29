@@ -19,6 +19,7 @@
 						  ,"cobranzaUniforme","cobranzaDetallePension","cobranzaDetalleUniforme"
 						  ,"jugadorListaPDF", "empleadoIE", "empleadoDescargaEgreso","pagosUniformeUpdate"
 						  ,"reporteRubros","reportePagosReceptadosResumen","alumnoListaPDF","ingresoList"
+						  ,"reporteRepresentantesSede","reporteContactosEmergenciaSede"
 						  ,"reporteRepresentanteFactura","asistenciaHorarioLista","empleadoEgresoUpdate"
 						  ,"asistencia","asistenciaAlumno","ingresoList","egresoList","balanceResultados"
 						  ,"reporteAsistencia", "buscarAsistencia", "horarioListaPDF","representanteFLPD"
