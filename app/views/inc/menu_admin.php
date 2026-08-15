@@ -13,6 +13,20 @@
               </li>
 
               <li class="nav-item">
+                <a href="<?php echo APP_URL."inscripcionPendientes/" ?>" class="nav-link <?php if ($url[0]=='inscripcionPendientes') echo 'active'; else echo ''; ?>">
+                  <i class="nav-icon fas fa-user-clock text-warning"></i>
+                  <p>Inscripciones pendientes</p>
+                </a>
+              </li>
+
+              <li class="nav-item">
+                <a href="<?php echo APP_URL."consentimientoList/" ?>" class="nav-link <?php if ($url[0]=='consentimientoList') echo 'active'; else echo ''; ?>">
+                  <i class="nav-icon fas fa-user-shield text-warning"></i>
+                  <p>Consentimientos LOPDP</p>
+                </a>
+              </li>
+
+              <li class="nav-item">
                 <a href="<?php echo APP_URL."representanteList/" ?>" class="nav-link <?php if ($url[0]=='representanteList') echo 'active'; else echo ''; ?>">
                   <i class="nav-icon fas fa-diagnoses text-info"></i>
                   <p>Representantes</p>
