@@ -25,7 +25,7 @@
 						  ,"reporteAsistencia", "buscarAsistencia", "horarioListaPDF","representanteFLPD"
 						  ,"formularioLPPDF","empleadoEntrada", "userMenu", "permisoList", "permisoNew"
 						  ,"empleadoAsistencias","agenda","empleadoAsistenciasDetalle","cobranzaPensionInactivos"
-						  ,"ingresosLugarEntrenamiento","estadisticas","reporteIngresosMorames","facturasList"
+						  ,"ingresosLugarEntrenamiento","estadisticas","reporteIngresosMorames","facturasList","facturasEmitidas"
 						  ,"facturasNew","facturacionConfig","carnetList","carnetFoto","carnetConf","carnetPDF","carnetReimpresionPDF"
 						  ,"carnetFotoPDF","cumpleaniosList","cumpleaniosTarjeta","importarAlumnos","inscripcionEnlace"
 						  ,"consentimientoList","inscripcionPendientes"];

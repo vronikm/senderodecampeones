@@ -78,13 +78,12 @@
 			<div class="container-fluid">
 			<div class="row mb-2">
 				<div class="col-sm-6">
-				<h5 class="m-0">Registro de facturas</h5>
+					<h5 class="m-0">Registro de facturas</h5>
 				</div><!-- /.col -->
 				<div class="col-sm-6">
-				<ol class="breadcrumb float-sm-right">
-					<li class="breadcrumb-item"><a href="#">Nuevo</a></li>
-					<li class="breadcrumb-item active">Dashboard v1</li>
-				</ol>
+					<a href="<?php echo APP_URL; ?>facturasEmitidas/" class="btn btn-sm bg-lightblue float-sm-right">
+						<i class="fas fa-list mr-1"></i> Facturas emitidas
+					</a>
 				</div><!-- /.col -->
 			</div><!-- /.row -->
 			</div><!-- /.container-fluid -->

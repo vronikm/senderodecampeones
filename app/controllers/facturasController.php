@@ -1675,7 +1675,7 @@
 			$filtroFecha = (preg_match('/^\d{4}-\d{2}-\d{2}$/', (string)$fecha_inicio) && preg_match('/^\d{4}-\d{2}-\d{2}$/', (string)$fecha_fin))
 				? " AND FE.fecha_emision BETWEEN '".$fecha_inicio."' AND '".$fecha_fin."'" : "";
 			$tabla = '';
-			$consulta = "SELECT FE.id, FE.fecha_emision, FE.establecimiento, FE.punto_emision, FE.secuencial, FE.total, FE.estado_sri, FE.clave_acceso, FE.cliente_razon_social, FE.cliente_email, FE.numero_autorizacion, FE.mensaje_error FROM sujeto_alumno A INNER JOIN alumno_representante R ON R.repre_id = A.alumno_repreid INNER JOIN facturas_electronicas FE ON FE.representante_id = R.repre_id WHERE A.alumno_id = ".$alumnoid." AND FE.estado_sri <> 'ANULADA'".$filtroFecha." ORDER BY FE.fecha_emision DESC, FE.id DESC";
+			$consulta = "SELECT FE.id, FE.fecha_emision, FE.establecimiento, FE.punto_emision, FE.secuencial, FE.total, FE.estado_sri, FE.clave_acceso, FE.cliente_razon_social, FE.cliente_email, FE.numero_autorizacion, FE.mensaje_error, FE.factura_origen_id, FE.reemplazada_por_id, FE.reemplazo_motivo, REP.establecimiento AS reemplazo_establecimiento, REP.punto_emision AS reemplazo_punto_emision, REP.secuencial AS reemplazo_secuencial, REP.estado_sri AS reemplazo_estado FROM sujeto_alumno A INNER JOIN alumno_representante R ON R.repre_id = A.alumno_repreid INNER JOIN facturas_electronicas FE ON FE.representante_id = R.repre_id LEFT JOIN facturas_electronicas REP ON REP.id = FE.reemplazada_por_id WHERE A.alumno_id = ".$alumnoid." AND FE.estado_sri <> 'ANULADA'".$filtroFecha." ORDER BY FE.fecha_emision DESC, FE.id DESC";
 			$datos = $this->ejecutarConsulta($consulta)->fetchAll();
 			$contador = 1;
 			foreach($datos as $rows){
@@ -1686,24 +1686,124 @@
 				$estadoClass = ($estado==='AUTORIZADO') ? 'badge-success' : (in_array($estado, ['DEVUELTA','NO_AUTORIZADO','ERROR'], true) ? 'badge-danger' : (in_array($estado, ['ENVIADA','RECIBIDA','FIRMADA'], true) ? 'badge-info' : 'badge-warning'));
 				$errorSecuencial = $this->esErrorSecuencialRegistrado($rows['mensaje_error'] ?? '');
 				$acciones = '<a href="'.$rideUrl.'" class="btn btn-xs btn-outline-info" target="_blank"><i class="fas fa-file-invoice"></i> RIDE</a> <a href="'.$xmlUrl.'" class="btn btn-xs btn-outline-secondary"><i class="fas fa-code"></i> XML</a>';
-				if($estado !== 'AUTORIZADO'){
-					if(!$errorSecuencial){
-						$acciones .= ' <button type="button" class="btn btn-xs btn-success btn-emitir-sri" data-id="'.$rows['id'].'"><i class="fas fa-paper-plane"></i> Emitir SRI</button>';
-					}
-					$acciones .= ' <button type="button" class="btn btn-xs btn-outline-primary btn-consultar-sri" data-id="'.$rows['id'].'"><i class="fas fa-sync-alt"></i> Consultar</button>';
-					if($errorSecuencial || in_array($estado, ['DEVUELTA','NO_AUTORIZADO'], true)){
-						$acciones .= ' <button type="button" class="btn btn-xs btn-warning btn-regenerar-factura" data-id="'.$rows['id'].'"><i class="fas fa-redo"></i> Nuevo secuencial</button>';
+				$yaReemplazada = !empty($rows['reemplazada_por_id']);
+				if($estado !== 'AUTORIZADO' && !$yaReemplazada){
+					if($errorSecuencial && $estado === 'DEVUELTA'){
+						$acciones .= ' <button type="button" class="btn btn-xs btn-outline-primary btn-consultar-sri" data-id="'.$rows['id'].'"><i class="fas fa-sync-alt"></i> Consultar</button>';
+						$acciones .= ' <button type="button" class="btn btn-xs btn-warning btn-regenerar-factura" data-id="'.$rows['id'].'" data-numero="'.htmlspecialchars($numero, ENT_QUOTES, 'UTF-8').'" data-fecha-emision="'.htmlspecialchars($rows['fecha_emision'], ENT_QUOTES, 'UTF-8').'"><i class="fas fa-redo"></i> Nuevo secuencial</button>';
+					}else{
+						$textoEmision = in_array($estado, ['DEVUELTA','NO_AUTORIZADO','ERROR'], true) ? 'Corregir y reenviar' : 'Emitir SRI';
+						$acciones .= ' <button type="button" class="btn btn-xs btn-success btn-emitir-sri" data-id="'.$rows['id'].'"><i class="fas fa-paper-plane"></i> '.$textoEmision.'</button>';
+						$acciones .= ' <button type="button" class="btn btn-xs btn-outline-primary btn-consultar-sri" data-id="'.$rows['id'].'"><i class="fas fa-sync-alt"></i> Consultar</button>';
 					}
 				}elseif(filter_var($rows['cliente_email'] ?? '', FILTER_VALIDATE_EMAIL)){
 					$acciones .= ' <button type="button" class="btn btn-xs btn-outline-success btn-enviar-factura" data-id="'.$rows['id'].'" data-email="'.htmlspecialchars($rows['cliente_email'], ENT_QUOTES, 'UTF-8').'"><i class="fas fa-envelope"></i> Enviar</button>';
 				}
 				$autorizacion = !empty($rows['numero_autorizacion']) ? '<br><small class="text-success">Aut.: '.htmlspecialchars($rows['numero_autorizacion'], ENT_QUOTES, 'UTF-8').'</small>' : '';
 				$error = !empty($rows['mensaje_error']) ? '<br><small class="text-danger">'.htmlspecialchars($this->limpiarTextoFactura($rows['mensaje_error']), ENT_QUOTES, 'UTF-8').'</small>' : '';
-				$tabla .= '<tr><td>'.$contador.'</td><td>'.$rows['fecha_emision'].'</td><td>'.number_format((float)$rows['total'], 2, '.', '').'</td><td><strong>'.$numero.'</strong><br><small class="text-muted">Clave: '.$rows['clave_acceso'].'</small>'.$autorizacion.'</td><td><span class="badge '.$estadoClass.'">'.$estado.'</span>'.$error.'</td><td>'.$acciones.'</td></tr>';
+				$reemplazo = '';
+				if($yaReemplazada){
+					$numeroReemplazo = ($rows['reemplazo_establecimiento'] ?? '').'-'.($rows['reemplazo_punto_emision'] ?? '').'-'.($rows['reemplazo_secuencial'] ?? '');
+					$rideReemplazoUrl = APP_URL.'app/ajax/facturasAjax.php?modulo_facturas=VER_RIDE&factura_id='.(int)$rows['reemplazada_por_id'];
+					$reemplazo = ' <a href="'.$rideReemplazoUrl.'" class="btn btn-xs btn-outline-warning" target="_blank"><i class="fas fa-link"></i> Reemplazo '.$numeroReemplazo.'</a>';
+				}
+				$tabla .= '<tr><td>'.$contador.'</td><td>'.$rows['fecha_emision'].'</td><td>'.number_format((float)$rows['total'], 2, '.', '').'</td><td><strong>'.$numero.'</strong><br><small class="text-muted">Clave: '.$rows['clave_acceso'].'</small>'.$autorizacion.'</td><td><span class="badge '.$estadoClass.'">'.$estado.'</span>'.$error.'</td><td>'.$acciones.$reemplazo.'</td></tr>';
 				$contador++;
 			}
 			if($tabla===''){ $tabla = '<tr><td colspan="6" class="text-center text-muted">'.($filtroFecha === '' ? 'No hay facturas generadas.' : 'No hay facturas generadas en el rango seleccionado.').'</td></tr>'; }
 			return $tabla;
+		}
+
+		public function listarFacturasEmitidas($filtros = [], $rolid = null, $usuario = null){
+			$fechaInicio = (string)($filtros['fecha_inicio'] ?? '');
+			$fechaFin = (string)($filtros['fecha_fin'] ?? '');
+			$numero = trim((string)($filtros['numero'] ?? ''));
+			$cliente = trim((string)($filtros['cliente'] ?? ''));
+			$estado = strtoupper(trim((string)($filtros['estado'] ?? '')));
+			$sedeid = filter_var($filtros['sedeid'] ?? null, FILTER_VALIDATE_INT, ['options'=>['min_range'=>1]]);
+			$estadosPermitidos = ['PENDIENTE','GENERADA','FIRMADA','ENVIADA','RECIBIDA','DEVUELTA','AUTORIZADO','NO_AUTORIZADO','ERROR','ANULADA'];
+			$condiciones = [];
+			$parametros = [];
+
+			if(preg_match('/^\d{4}-\d{2}-\d{2}$/', $fechaInicio)){
+				$condiciones[] = 'FE.fecha_emision >= :fecha_inicio';
+				$parametros[':fecha_inicio'] = $fechaInicio;
+			}
+			if(preg_match('/^\d{4}-\d{2}-\d{2}$/', $fechaFin)){
+				$condiciones[] = 'FE.fecha_emision <= :fecha_fin';
+				$parametros[':fecha_fin'] = $fechaFin;
+			}
+			if($numero !== ''){
+				$condiciones[] = "CONCAT(FE.establecimiento, '-', FE.punto_emision, '-', FE.secuencial) LIKE :numero";
+				$parametros[':numero'] = '%'.$numero.'%';
+			}
+			if($cliente !== ''){
+				$condiciones[] = '(FE.cliente_identificacion LIKE :cliente_identificacion OR FE.cliente_razon_social LIKE :cliente_nombre)';
+				$parametros[':cliente_identificacion'] = '%'.$cliente.'%';
+				$parametros[':cliente_nombre'] = '%'.$cliente.'%';
+			}
+			if(in_array($estado, $estadosPermitidos, true)){
+				$condiciones[] = 'FE.estado_sri = :estado';
+				$parametros[':estado'] = $estado;
+			}
+			if($sedeid){
+				$condiciones[] = 'A.alumno_sedeid = :sedeid';
+				$parametros[':sedeid'] = $sedeid;
+			}
+			if(!in_array((int)$rolid, [1, 2], true)){
+				$condiciones[] = "EXISTS (
+					SELECT 1
+					FROM seguridad_usuario_sede US
+					INNER JOIN seguridad_usuario U ON U.usuario_id = US.usuariosede_usuarioid
+					WHERE US.usuariosede_sedeid = A.alumno_sedeid
+					AND U.usuario_usuario = :usuario
+				)";
+				$parametros[':usuario'] = (string)$usuario;
+			}
+
+			$sql = "SELECT FE.id, FE.alumno_id, FE.fecha_emision, FE.establecimiento, FE.punto_emision, FE.secuencial,
+				FE.cliente_identificacion, FE.cliente_razon_social, FE.total, FE.estado_sri,
+				FE.numero_autorizacion, S.sede_nombre,
+				(SELECT COUNT(*) FROM facturas_electronicas_detalle FD WHERE FD.factura_electronica_id = FE.id) AS detalles
+				FROM facturas_electronicas FE
+				INNER JOIN sujeto_alumno A ON A.alumno_id = FE.alumno_id
+				LEFT JOIN general_sede S ON S.sede_id = A.alumno_sedeid";
+			if(!empty($condiciones)){
+				$sql .= ' WHERE '.implode(' AND ', $condiciones);
+			}
+			$sql .= ' ORDER BY FE.fecha_emision DESC, FE.id DESC';
+
+			try{
+				$datos = $this->ejecutarConsulta($sql, $parametros)->fetchAll();
+			}catch(\Throwable $e){
+				return '<tr><td colspan="9" class="text-center text-danger">No fue posible consultar las facturas emitidas.</td></tr>';
+			}
+
+			$tabla = '';
+			foreach($datos as $fila){
+				$estadoFactura = (string)$fila['estado_sri'];
+				$claseEstado = $estadoFactura === 'AUTORIZADO'
+					? 'badge-success'
+					: (in_array($estadoFactura, ['DEVUELTA','NO_AUTORIZADO','ERROR','ANULADA'], true) ? 'badge-danger' : 'badge-warning');
+				$numeroFactura = $fila['establecimiento'].'-'.$fila['punto_emision'].'-'.$fila['secuencial'];
+				$autorizacion = !empty($fila['numero_autorizacion'])
+					? '<br><small class="text-success">Aut.: '.htmlspecialchars((string)$fila['numero_autorizacion'], ENT_QUOTES, 'UTF-8').'</small>'
+					: '';
+				$urlRevision = APP_URL.'facturasNew/'.(int)$fila['alumno_id'].'/';
+				$tabla .= '<tr>'
+					.'<td>'.htmlspecialchars((string)$fila['fecha_emision'], ENT_QUOTES, 'UTF-8').'</td>'
+					.'<td><strong>'.htmlspecialchars($numeroFactura, ENT_QUOTES, 'UTF-8').'</strong>'.$autorizacion.'</td>'
+					.'<td>'.htmlspecialchars((string)($fila['sede_nombre'] ?? 'Sin sede'), ENT_QUOTES, 'UTF-8').'</td>'
+					.'<td>'.htmlspecialchars((string)$fila['cliente_identificacion'], ENT_QUOTES, 'UTF-8').'</td>'
+					.'<td>'.htmlspecialchars((string)$fila['cliente_razon_social'], ENT_QUOTES, 'UTF-8').'</td>'
+					.'<td class="text-center">'.(int)$fila['detalles'].'</td>'
+					.'<td class="text-right">$ '.number_format((float)$fila['total'], 2, '.', ',').'</td>'
+					.'<td class="text-center"><span class="badge '.$claseEstado.'">'.htmlspecialchars($estadoFactura, ENT_QUOTES, 'UTF-8').'</span></td>'
+					.'<td class="text-center"><a href="'.$urlRevision.'" class="btn btn-xs btn-outline-primary" target="_blank" rel="noopener"><i class="fas fa-search mr-1"></i> Revisar</a></td>'
+					.'</tr>';
+			}
+
+			return $tabla !== '' ? $tabla : '<tr><td colspan="9" class="text-center text-muted">No hay facturas emitidas para los filtros seleccionados.</td></tr>';
 		}
 
 		private function extraerMensajesSri(array $resultado){
@@ -1764,8 +1864,10 @@
 			return $dom->saveXML();
 		}
 
-		private function obtenerFacturaElectronicaPorId(\PDO $conexion, $facturaId){
-			$stmt = $conexion->prepare("SELECT * FROM facturas_electronicas WHERE id = :id LIMIT 1");
+		private function obtenerFacturaElectronicaPorId(\PDO $conexion, $facturaId, $bloquear=false){
+			$sql = "SELECT * FROM facturas_electronicas WHERE id = :id LIMIT 1";
+			if($bloquear){ $sql .= " FOR UPDATE"; }
+			$stmt = $conexion->prepare($sql);
 			$stmt->execute([':id'=>(int)$facturaId]);
 			$factura = $stmt->fetch(\PDO::FETCH_ASSOC);
 			if(!$factura){
@@ -2292,8 +2394,14 @@
 				$factura = $this->obtenerFacturaElectronicaPorId($conexion, $facturaId);
 				$estado = (string)($factura['estado_sri'] ?? '');
 				$mensaje = (string)($factura['mensaje_error'] ?? '');
-				if(!in_array($estado, ['DEVUELTA','NO_AUTORIZADO'], true) && !$this->esErrorSecuencialRegistrado($mensaje)){
-					return $this->respuestaJson('simple', 'Factura no regenerable', 'Solo se puede generar un nuevo secuencial para facturas devueltas, no autorizadas o con error de secuencial registrado.', 'warning');
+				if($estado !== 'DEVUELTA' || !$this->esErrorSecuencialRegistrado($mensaje)){
+					return $this->respuestaJson('simple', 'Factura no regenerable', 'Solo las facturas devueltas por secuencial registrado pueden generar un nuevo secuencial. Para otros errores, corrija la causa y reenvie la misma factura.', 'warning');
+				}
+				if(!empty($factura['reemplazada_por_id'])){
+					return $this->respuestaJson('simple', 'Factura ya reemplazada', 'Esta factura ya tiene un comprobante de reemplazo asociado y no puede generar otro secuencial.', 'warning');
+				}
+				if((string)($_POST['confirmacion_sri'] ?? '') !== 'SI' || (string)($_POST['confirmacion_fecha'] ?? '') !== 'SI'){
+					return $this->respuestaJson('simple', 'Confirmacion requerida', 'Confirme que verifico el secuencial en SRI y que acepta emitir el reemplazo con la fecha actual.', 'warning');
 				}
 				$stmt = $conexion->prepare("SELECT pago_id FROM facturas_electronicas_detalle WHERE factura_electronica_id = :id AND pago_id IS NOT NULL ORDER BY id");
 				$stmt->execute([':id'=>$facturaId]);
@@ -2307,6 +2415,7 @@
 				$_POST['alumno'] = (int)$factura['alumno_id'];
 				$_POST['pagos'] = $pagosIds;
 				$_POST['forma_pago'] = $formaPago;
+				$_POST['factura_origen_id'] = $facturaId;
 				return $this->generarFacturaElectronica();
 			}catch(\Throwable $e){
 				return $this->respuestaJson('simple', 'No fue posible generar nuevo secuencial', $e->getMessage(), 'error');
@@ -2326,6 +2435,8 @@
 				$formaPago = (string)($config['forma_pago_default'] ?? '20');
 			}
 			$pagosIds = $_POST['pagos'] ?? ($_POST['pagos_seleccionados'] ?? []);
+			$facturaOrigenId = (int)($_POST['factura_origen_id'] ?? 0);
+			$esReemplazo = $facturaOrigenId > 0;
 			if(!is_array($pagosIds)){ $pagosIds = [$pagosIds]; }
 			if($alumnoid <= 0){ return $this->respuestaJson('simple', 'Alumno no valido', 'No fue posible identificar el alumno para la factura.', 'error'); }
 			if(empty($pagosIds)){ return $this->respuestaJson('simple', 'Seleccione pagos', 'Seleccione al menos un pago pendiente para generar la factura.', 'warning'); }
@@ -2334,6 +2445,18 @@
 			$conexion = $this->conectar();
 			try{
 				$conexion->beginTransaction();
+				if($esReemplazo){
+					if((string)($_POST['confirmacion_sri'] ?? '') !== 'SI' || (string)($_POST['confirmacion_fecha'] ?? '') !== 'SI'){
+						throw new \RuntimeException('Confirme la verificacion del secuencial en SRI y la fecha actual de emision.');
+					}
+					$facturaOrigen = $this->obtenerFacturaElectronicaPorId($conexion, $facturaOrigenId, true);
+					if((int)$facturaOrigen['alumno_id'] !== $alumnoid || (string)$facturaOrigen['estado_sri'] !== 'DEVUELTA' || !$this->esErrorSecuencialRegistrado($facturaOrigen['mensaje_error'] ?? '')){
+						throw new \RuntimeException('La factura de origen no es valida para generar un reemplazo por secuencial registrado.');
+					}
+					if(!empty($facturaOrigen['reemplazada_por_id'])){
+						throw new \RuntimeException('La factura de origen ya tiene un comprobante de reemplazo asociado.');
+					}
+				}
 				$representante = $this->obtenerRepresentanteFactura($conexion, $alumnoid);
 				$tipoIdentificacion = $this->codigoSriTipoIdentificacion($representante['repre_tipoidentificacion'], $representante['repre_identificacion']);
 				if(!$this->validarIdentificacionSri($representante['repre_identificacion'], $representante['repre_tipoidentificacion'])){ throw new \RuntimeException('La identificacion del representante no es valida para facturacion SRI.'); }
@@ -2383,9 +2506,16 @@
 				if(empty($validacionXml['valido'])){ throw new \RuntimeException('El XML generado no es valido: '.implode('; ', $validacionXml['errores'] ?? [])); }
 				$xmlPath = $service->guardarXML($xml, $claveAcceso, 'generados');
 				$numero = $establecimiento.'-'.$puntoEmision.'-'.$secuencial;
-				$insertFactura = $conexion->prepare("INSERT INTO facturas_electronicas (alumno_id, representante_id, clave_acceso, tipo_comprobante, establecimiento, punto_emision, secuencial, fecha_emision, ambiente, tipo_emision, cliente_tipo_identificacion, cliente_identificacion, cliente_razon_social, cliente_direccion, cliente_email, cliente_telefono, subtotal_iva, subtotal_0, subtotal_no_objeto, subtotal_exento, subtotal, descuento, iva, total, estado_sri, xml_generado, created_by) VALUES (:alumno_id, :representante_id, :clave_acceso, :tipo_comprobante, :establecimiento, :punto_emision, :secuencial, :fecha_emision, :ambiente, :tipo_emision, :cliente_tipo_identificacion, :cliente_identificacion, :cliente_razon_social, :cliente_direccion, :cliente_email, :cliente_telefono, :subtotal_iva, :subtotal_0, 0, 0, :subtotal, 0, :iva, :total, 'GENERADA', :xml_generado, :created_by)");
-				$insertFactura->execute([':alumno_id'=>$alumnoid, ':representante_id'=>(int)$representante['repre_id'], ':clave_acceso'=>$claveAcceso, ':tipo_comprobante'=>$tipoComprobante, ':establecimiento'=>$establecimiento, ':punto_emision'=>$puntoEmision, ':secuencial'=>$secuencial, ':fecha_emision'=>$fechaEmision, ':ambiente'=>(string)($config['ambiente'] ?? '1'), ':tipo_emision'=>(string)($config['tipo_emision'] ?? '1'), ':cliente_tipo_identificacion'=>$tipoIdentificacion, ':cliente_identificacion'=>$this->normalizarTextoSri($representante['repre_identificacion'], 20), ':cliente_razon_social'=>$this->normalizarTextoSri($representante['representante'], 300), ':cliente_direccion'=>$this->normalizarTextoSri($representante['repre_direccion'], 300), ':cliente_email'=>$representante['repre_correo'], ':cliente_telefono'=>$representante['repre_celular'], ':subtotal_iva'=>round($subtotalIva, 2), ':subtotal_0'=>round($subtotal0, 2), ':subtotal'=>$subtotal, ':iva'=>$ivaTotal, ':total'=>$total, ':xml_generado'=>$xmlPath, ':created_by'=>$_SESSION['id'] ?? null]);
+				$insertFactura = $conexion->prepare("INSERT INTO facturas_electronicas (alumno_id, representante_id, factura_origen_id, reemplazo_motivo, clave_acceso, tipo_comprobante, establecimiento, punto_emision, secuencial, fecha_emision, ambiente, tipo_emision, cliente_tipo_identificacion, cliente_identificacion, cliente_razon_social, cliente_direccion, cliente_email, cliente_telefono, subtotal_iva, subtotal_0, subtotal_no_objeto, subtotal_exento, subtotal, descuento, iva, total, estado_sri, xml_generado, created_by) VALUES (:alumno_id, :representante_id, :factura_origen_id, :reemplazo_motivo, :clave_acceso, :tipo_comprobante, :establecimiento, :punto_emision, :secuencial, :fecha_emision, :ambiente, :tipo_emision, :cliente_tipo_identificacion, :cliente_identificacion, :cliente_razon_social, :cliente_direccion, :cliente_email, :cliente_telefono, :subtotal_iva, :subtotal_0, 0, 0, :subtotal, 0, :iva, :total, 'GENERADA', :xml_generado, :created_by)");
+				$insertFactura->execute([':alumno_id'=>$alumnoid, ':representante_id'=>(int)$representante['repre_id'], ':factura_origen_id'=>$esReemplazo ? $facturaOrigenId : null, ':reemplazo_motivo'=>$esReemplazo ? 'SECUENCIAL_REGISTRADO' : null, ':clave_acceso'=>$claveAcceso, ':tipo_comprobante'=>$tipoComprobante, ':establecimiento'=>$establecimiento, ':punto_emision'=>$puntoEmision, ':secuencial'=>$secuencial, ':fecha_emision'=>$fechaEmision, ':ambiente'=>(string)($config['ambiente'] ?? '1'), ':tipo_emision'=>(string)($config['tipo_emision'] ?? '1'), ':cliente_tipo_identificacion'=>$tipoIdentificacion, ':cliente_identificacion'=>$this->normalizarTextoSri($representante['repre_identificacion'], 20), ':cliente_razon_social'=>$this->normalizarTextoSri($representante['representante'], 300), ':cliente_direccion'=>$this->normalizarTextoSri($representante['repre_direccion'], 300), ':cliente_email'=>$representante['repre_correo'], ':cliente_telefono'=>$representante['repre_celular'], ':subtotal_iva'=>round($subtotalIva, 2), ':subtotal_0'=>round($subtotal0, 2), ':subtotal'=>$subtotal, ':iva'=>$ivaTotal, ':total'=>$total, ':xml_generado'=>$xmlPath, ':created_by'=>$_SESSION['id'] ?? null]);
 				$facturaId = (int)$conexion->lastInsertId();
+				if($esReemplazo){
+					$marcarOrigen = $conexion->prepare("UPDATE facturas_electronicas SET reemplazada_por_id = :reemplazo, reemplazo_motivo = 'SECUENCIAL_REGISTRADO', reemplazo_confirmado_at = NOW(), reemplazo_confirmado_by = :usuario WHERE id = :origen AND reemplazada_por_id IS NULL");
+					$marcarOrigen->execute([':reemplazo'=>$facturaId, ':usuario'=>$_SESSION['id'] ?? null, ':origen'=>$facturaOrigenId]);
+					if($marcarOrigen->rowCount() !== 1){
+						throw new \RuntimeException('No fue posible vincular la factura de reemplazo con su origen.');
+					}
+				}
 				$insertDetalle = $conexion->prepare("INSERT INTO facturas_electronicas_detalle (factura_electronica_id, pago_id, codigo_principal, descripcion, cantidad, precio_unitario, descuento, precio_total_sin_impuesto, iva_tarifa, iva_codigo_porcentaje, iva_valor) VALUES (:factura_id, :pago_id, :codigo, :descripcion, :cantidad, :precio_unitario, :descuento, :precio_total_sin_impuesto, :iva_tarifa, :iva_codigo_porcentaje, :iva_valor)");
 				foreach($detalles as $detalle){
 					$insertDetalle->execute([':factura_id'=>$facturaId, ':pago_id'=>$detalle['pago_id'], ':codigo'=>$detalle['codigo'], ':descripcion'=>$detalle['descripcion'], ':cantidad'=>$detalle['cantidad'], ':precio_unitario'=>$detalle['precio_unitario'], ':descuento'=>$detalle['descuento'], ':precio_total_sin_impuesto'=>$detalle['precio_total_sin_impuesto'], ':iva_tarifa'=>$detalle['iva_tarifa'], ':iva_codigo_porcentaje'=>$detalle['iva_codigo_porcentaje'], ':iva_valor'=>$detalle['iva_valor']]);

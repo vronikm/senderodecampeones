@@ -697,10 +697,13 @@
 			});
 		});
 
-		function ejecutarAccionSri(facturaId, modulo, cargando, textoEspera){
+		function ejecutarAccionSri(facturaId, modulo, cargando, textoEspera, datosExtra){
 			const formData = new FormData();
 			formData.append("modulo_facturas", modulo);
 			formData.append("factura_id", facturaId);
+			Object.keys(datosExtra || {}).forEach(function(clave){
+				formData.append(clave, datosExtra[clave]);
+			});
 
 			Swal.fire({
 				title: cargando,
@@ -740,16 +743,25 @@
 
 		$(document).on("click", ".btn-regenerar-factura", function(){
 			const facturaId = $(this).data("id");
+			const numero = $(this).data("numero") || "";
+			const fechaEmision = $(this).data("fecha-emision") || "";
 			Swal.fire({
-				title: "Generar nuevo secuencial",
-				text: "Se creara una nueva factura para los mismos pagos. La factura devuelta no se reenviara al SRI.",
+				title: "Confirmar nuevo secuencial",
+				html: `<p>La factura <strong>${numero}</strong> no sera reenviada. Se creara un reemplazo para los mismos pagos con la fecha actual de emision del servidor, no con la fecha original ${fechaEmision}.</p><div class="text-left"><div class="custom-control custom-checkbox mb-2"><input type="checkbox" class="custom-control-input" id="confirmacion-sri"><label class="custom-control-label" for="confirmacion-sri">Confirmo que verifique en SRI que el secuencial original ya corresponde a otra factura.</label></div><div class="custom-control custom-checkbox"><input type="checkbox" class="custom-control-input" id="confirmacion-fecha"><label class="custom-control-label" for="confirmacion-fecha">Acepto emitir el reemplazo con la fecha actual y transmitirlo inmediatamente al SRI.</label></div></div>`,
 				icon: "warning",
 				showCancelButton: true,
 				confirmButtonText: "Generar nueva",
-				cancelButtonText: "Cancelar"
+				cancelButtonText: "Cancelar",
+				preConfirm: function(){
+					if(!document.getElementById("confirmacion-sri").checked || !document.getElementById("confirmacion-fecha").checked){
+						Swal.showValidationMessage("Debe confirmar la verificacion en SRI y la fecha de emision.");
+						return false;
+					}
+					return true;
+				}
 			}).then((result) => {
 				if(result.isConfirmed){
-					ejecutarAccionSri(facturaId, "REGENERAR_FACTURA_DEVUELTA", "Generando nueva factura", "Se reservara el siguiente secuencial y se enviara al SRI.");
+					ejecutarAccionSri(facturaId, "REGENERAR_FACTURA_DEVUELTA", "Generando nueva factura", "Se reservara el siguiente secuencial y se enviara al SRI.", {confirmacion_sri: "SI", confirmacion_fecha: "SI"});
 				}
 			});
 		});

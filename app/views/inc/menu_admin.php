@@ -47,11 +47,25 @@
                 </a>
               </li>
 
-              <li class="nav-item">
-                <a href="<?php echo APP_URL."facturasList/" ?>" class="nav-link <?php if ($url[0]=='facturasList' || $url[0]=='facturasNew') echo 'active'; else echo ''; ?>">
+              <li class="nav-item <?php if ($url[0]=='facturasList' || $url[0]=='facturasNew' || $url[0]=='facturasEmitidas') echo 'menu-open'; else echo ''; ?>">
+                <a href="#" class="nav-link <?php if ($url[0]=='facturasList' || $url[0]=='facturasNew' || $url[0]=='facturasEmitidas') echo 'active'; else echo ''; ?>">
                   <i class="nav-icon fa fa-money-check text-info"></i>
-                  <p>Facturación</p>
+                  <p>Facturación<i class="fas fa-angle-left right"></i></p>
                 </a>
+                <ul class="nav nav-treeview">
+                  <li class="nav-item">
+                    <a href="<?php echo APP_URL."facturasList/" ?>" class="nav-link <?php if ($url[0]=='facturasList' || $url[0]=='facturasNew') echo 'active'; else echo ''; ?>">
+                      <i class="nav-icon far fa-circle text-info"></i>
+                      <p>Registrar facturas</p>
+                    </a>
+                  </li>
+                  <li class="nav-item">
+                    <a href="<?php echo APP_URL."facturasEmitidas/" ?>" class="nav-link <?php if ($url[0]=='facturasEmitidas') echo 'active'; else echo ''; ?>">
+                      <i class="nav-icon far fa-circle text-info"></i>
+                      <p>Facturas emitidas</p>
+                    </a>
+                  </li>
+                </ul>
               </li>
 
               <li class="nav-item">
