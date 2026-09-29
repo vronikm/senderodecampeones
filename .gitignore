@@ -1,0 +1,30 @@
+# =====================================================================
+# Secretos de facturación electrónica SRI — NUNCA versionar
+# =====================================================================
+/storage/certificados/firma.p12
+/storage/certificados/firma.key.php
+/storage/certificados/.cryptokey.php
+
+# Cualquier otra firma/clave que se suba a esa carpeta
+/storage/certificados/*.p12
+/storage/certificados/*.pfx
+/storage/certificados/*.key
+/storage/certificados/.cryptokey*
+
+# =====================================================================
+# Datos personales (LOPDP) — viven en el servidor, NUNCA en git
+# =====================================================================
+# Comprobantes SRI generados: cedulas, nombres y montos de representantes
+/storage/sri/logs/
+/storage/sri/ride/
+/storage/sri/xml/
+
+# Fotos de alumnos (menores de edad) y empleados; se conservan los defaults
+/app/views/imagenes/fotos/alumno/*
+!/app/views/imagenes/fotos/alumno/alumno.jpg
+!/app/views/imagenes/fotos/alumno/alumno.png
+/app/views/imagenes/fotos/empleado/*
+!/app/views/imagenes/fotos/empleado/default*
+
+# Configuracion local de Claude Code
+/.claude/
