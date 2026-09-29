@@ -1915,7 +1915,12 @@
 			return $tabla;
 		}
 
-		public function listarFacturasEmitidas($filtros = [], $rolid = null, $usuario = null){
+		/**
+		 * Filas de facturas emitidas segun filtros y sedes del usuario, o
+		 * false si la consulta falla. La vista la llama una sola vez y la
+		 * reutiliza para la tabla y para las tarjetas de resumen.
+		 */
+		public function consultarFacturasEmitidas($filtros = [], $rolid = null, $usuario = null){
 			$fechaInicio = (string)($filtros['fecha_inicio'] ?? '');
 			$fechaFin = (string)($filtros['fecha_fin'] ?? '');
 			$numero = trim((string)($filtros['numero'] ?? ''));
@@ -1975,9 +1980,49 @@
 			$sql .= ' ORDER BY FE.fecha_emision DESC, FE.id DESC';
 
 			try{
-				$datos = $this->ejecutarConsulta($sql, $parametros)->fetchAll();
+				return $this->ejecutarConsulta($sql, $parametros)->fetchAll();
 			}catch(\Throwable $e){
-				return '<tr><td colspan="9" class="text-center text-danger">No fue posible consultar las facturas emitidas.</td></tr>';
+				return false;
+			}
+		}
+
+		/** Conteos y monto autorizado para las tarjetas de facturasEmitidas. */
+		public function resumenFacturasEmitidas($filas){
+			$resumen = [
+				'total' => 0,
+				'monto_total' => 0,
+				'autorizadas' => 0,
+				'monto_autorizado' => 0,
+				'en_proceso' => 0,
+				'con_problema' => 0,
+				'anuladas' => 0,
+			];
+
+			foreach(is_array($filas) ? $filas : [] as $fila){
+				$estado = (string)$fila['estado_sri'];
+				$resumen['total']++;
+				if($estado !== 'ANULADA'){
+					$resumen['monto_total'] += (float)$fila['total'];
+				}
+				if($estado === 'AUTORIZADO'){
+					$resumen['autorizadas']++;
+					$resumen['monto_autorizado'] += (float)$fila['total'];
+				}elseif(in_array($estado, ['DEVUELTA', 'NO_AUTORIZADO', 'ERROR'], true)){
+					$resumen['con_problema']++;
+				}elseif($estado === 'ANULADA'){
+					$resumen['anuladas']++;
+				}else{
+					$resumen['en_proceso']++;
+				}
+			}
+
+			return $resumen;
+		}
+
+		/** Filas <tr> de la tabla de facturasEmitidas; $datos viene de consultarFacturasEmitidas(). */
+		public function listarFacturasEmitidas($datos){
+			if(!is_array($datos)){
+				return '';
 			}
 
 			$tabla = '';
@@ -2004,7 +2049,9 @@
 					.'</tr>';
 			}
 
-			return $tabla !== '' ? $tabla : '<tr><td colspan="9" class="text-center text-muted">No hay facturas emitidas para los filtros seleccionados.</td></tr>';
+			// Sin filas se devuelve vacio: DataTables muestra su propio mensaje
+			// (una fila con colspan le rompe el conteo de columnas).
+			return $tabla;
 		}
 
 		private function extraerMensajesSri(array $resultado){
