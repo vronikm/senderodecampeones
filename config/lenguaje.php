@@ -1,6 +1,6 @@
 <?php
-    $titule='Sistema de Gesti¨®n Deportiva DigiSports - Futbol'; 
-    $subtitule='Innovamos la administraci¨®n Deportiva';
+    $titule='Sistema de GestiÃ³n Deportiva DigiSports - Futbol'; 
+    $subtitule='Innovamos la administraciÃ³n Deportiva';
  
     //COBRANZA
     $tdetallepension="Sendero de Campeones";

@@ -2,6 +2,11 @@ CREATE TABLE IF NOT EXISTS facturas_electronicas (
     id INT AUTO_INCREMENT PRIMARY KEY,
     alumno_id INT NOT NULL,
     representante_id INT NOT NULL,
+    factura_origen_id INT DEFAULT NULL,
+    reemplazada_por_id INT DEFAULT NULL,
+    reemplazo_motivo VARCHAR(80) DEFAULT NULL,
+    reemplazo_confirmado_at DATETIME DEFAULT NULL,
+    reemplazo_confirmado_by INT DEFAULT NULL,
     clave_acceso VARCHAR(49) NOT NULL UNIQUE,
     tipo_comprobante CHAR(2) NOT NULL DEFAULT '01',
     establecimiento CHAR(3) NOT NULL,
@@ -40,6 +45,8 @@ CREATE TABLE IF NOT EXISTS facturas_electronicas (
     INDEX idx_fe_fecha (fecha_emision),
     INDEX idx_fe_estado (estado_sri),
     INDEX idx_fe_numero (establecimiento, punto_emision, secuencial),
+    UNIQUE KEY uk_fe_factura_origen (factura_origen_id),
+    INDEX idx_fe_reemplazada_por (reemplazada_por_id),
     INDEX idx_fe_cliente (cliente_identificacion)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
