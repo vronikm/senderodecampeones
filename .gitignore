@@ -28,3 +28,9 @@
 
 # Configuracion local de Claude Code
 /.claude/
+
+# Escaneos de cedulas (anverso/reverso) e imagenes temporales de carga
+/app/views/imagenes/cedulas/*
+!/app/views/imagenes/cedulas/Sinregistro.jpg
+/app/views/dist/img/temp/*
+!/app/views/dist/img/temp/.gitkeep
