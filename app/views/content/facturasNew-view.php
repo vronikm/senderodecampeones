@@ -9,6 +9,10 @@
 	$symbology = "code128"; // Cambiar tipo de código
 	$options = array('sx'=>1,'sy'=>0.5,'p'=>1); // Ajustar tamaño y padding
 	$insAlumno = new facturasController();
+
+	// Interruptor de mantenimiento del modulo (facturacionConfig).
+	require_once "app/views/inc/facturacion_servicio.php";
+	if(!facturacionServicioDisponible($insAlumno, 'Nueva factura')){ return; }
 	$sriConfig = $insAlumno->obtenerConfiguracionSri();
 	$sriEmisor = $sriConfig['emisor'] ?? [];
 	$sriAmbiente = ((string)($sriConfig['ambiente'] ?? '1') === '2') ? 'Produccion' : 'Pruebas';

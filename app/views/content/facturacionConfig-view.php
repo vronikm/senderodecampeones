@@ -4,6 +4,10 @@
 	$insFactura = new facturasController();
 	$sriConfig = $insFactura->obtenerConfiguracionSri();
 	$certificado = $insFactura->obtenerInfoCertificadoSri();
+	// Esta pantalla NO se bloquea por mantenimiento: es desde donde se
+	// vuelve a levantar el servicio.
+	$servicioEstado = $insFactura->estadoServicioFacturacion();
+	$servicioActivo = !empty($servicioEstado['activo']);
 	$emisor = $sriConfig['emisor'] ?? [];
 	$formasPago = $sriConfig['formas_pago'] ?? [];
 	$h = static function($valor){ return htmlspecialchars((string)$valor, ENT_QUOTES, 'UTF-8'); };
@@ -51,6 +55,62 @@
 
 		<section class="content">
 			<div class="container-fluid">
+
+				<!-- Interruptor de mantenimiento del modulo -->
+				<div class="row">
+					<div class="col-12">
+						<div class="card card-<?php echo $servicioActivo ? 'success' : 'warning'; ?> card-outline">
+							<div class="card-header">
+								<h3 class="card-title">
+									<i class="fas fa-power-off mr-2"></i>Estado del servicio de facturación electrónica
+								</h3>
+								<div class="card-tools">
+									<span class="badge badge-<?php echo $servicioActivo ? 'success' : 'warning'; ?> p-2">
+										<i class="fas fa-<?php echo $servicioActivo ? 'check-circle' : 'tools'; ?>"></i>
+										<?php echo $servicioActivo ? 'En servicio' : 'En mantenimiento'; ?>
+									</span>
+								</div>
+							</div>
+							<div class="card-body">
+								<p class="text-muted">
+									Al bajar el servicio se detiene la generación y el envío de facturas al SRI.
+									Las pantallas de facturación mostrarán un aviso de mantenimiento y esta
+									pantalla de configuración seguirá disponible para volver a levantarlo.
+									<strong>El registro de pagos no se ve afectado.</strong>
+								</p>
+
+								<form class="FormularioAjax" action="<?php echo APP_URL; ?>app/ajax/facturasAjax.php" method="POST" autocomplete="off" data-recargar-directo>
+									<input type="hidden" name="modulo_facturas" value="CAMBIAR_ESTADO_SERVICIO_SRI">
+									<input type="hidden" name="servicio_activo" value="<?php echo $servicioActivo ? '0' : '1'; ?>">
+
+									<div class="form-group">
+										<label for="mantenimiento_mensaje">Mensaje para los usuarios <small class="text-muted">(opcional)</small></label>
+										<input type="text" class="form-control" id="mantenimiento_mensaje" name="mantenimiento_mensaje"
+											   maxlength="300" placeholder="<?php echo $h(facturasController::MENSAJE_MANTENIMIENTO_SRI); ?>"
+											   value="<?php echo $h($servicioEstado['mensaje_propio'] ?? ''); ?>">
+										<small class="form-text text-muted">
+											Si lo deja vacío se muestra el mensaje por defecto. Útil para indicar hasta cuándo dura la interrupción.
+										</small>
+									</div>
+
+									<?php if($servicioActivo){ ?>
+									<button type="submit" class="btn btn-warning">
+										<i class="fas fa-tools mr-1"></i> Bajar el servicio por mantenimiento
+									</button>
+									<?php }else{ ?>
+									<button type="submit" class="btn btn-success">
+										<i class="fas fa-play mr-1"></i> Levantar el servicio
+									</button>
+									<span class="ml-3 text-muted">
+										Aviso actual: <em><?php echo $h($servicioEstado['mensaje'] ?? ''); ?></em>
+									</span>
+									<?php } ?>
+								</form>
+							</div>
+						</div>
+					</div>
+				</div>
+
 				<div class="row">
 					<div class="col-lg-8">
 						<form class="FormularioAjax" action="<?php echo APP_URL; ?>app/ajax/facturasAjax.php" method="POST" autocomplete="off" data-recargar-directo>
@@ -167,6 +227,47 @@
 												<input type="text" class="form-control form-control-sm" id="contribuyente_rimpe" name="contribuyente_rimpe" value="<?php echo $h($emisor['contribuyente_rimpe'] ?? ''); ?>">
 											</div>
 										</div>
+										<div class="col-12">
+											<hr>
+											<h6 class="text-muted mb-1"><i class="fas fa-building mr-1"></i>Proveedor del sistema de facturación</h6>
+											<p class="text-muted small">
+												La resolución <strong>NAC-DGERCGC26-00000027</strong> (art. 5) obliga a quienes emiten
+												con un sistema provisto por un tercero a incluir el <strong>RUC de ese proveedor</strong>
+												en la información adicional del comprobante. Si se deja vacío, el XML sale como hasta ahora.
+											</p>
+										</div>
+										<div class="col-md-4">
+											<div class="form-group">
+												<label for="ruc_proveedor">RUC del proveedor</label>
+												<input type="text" class="form-control form-control-sm" id="ruc_proveedor" name="ruc_proveedor"
+													   maxlength="13" inputmode="numeric"
+													   value="<?php echo $h($sriConfig['ruc_proveedor'] ?? ''); ?>" placeholder="1104015282001">
+												<small class="form-text text-muted">13 dígitos. Vacío = no se agrega al comprobante.</small>
+											</div>
+										</div>
+										<div class="col-md-8">
+											<div class="form-group">
+												<label for="etiqueta_ruc_proveedor">Nombre del campo en el XML</label>
+												<input type="text" class="form-control form-control-sm" id="etiqueta_ruc_proveedor" name="etiqueta_ruc_proveedor"
+													   maxlength="300"
+													   value="<?php echo $h($sriConfig['etiqueta_ruc_proveedor'] ?? 'RUC Proveedor'); ?>" placeholder="RUC Proveedor">
+												<small class="form-text text-muted">
+													Es el atributo <code>nombre</code> de <code>&lt;campoAdicional&gt;</code>. Se deja configurable
+													porque el literal exacto lo define la Ficha Técnica de Comprobantes Electrónicos vigente:
+													verifíquelo antes de emitir en producción.
+												</small>
+											</div>
+										</div>
+										<?php if(trim((string)($sriConfig['ruc_proveedor'] ?? '')) !== ''){ ?>
+										<div class="col-12">
+											<div class="alert alert-light border small mb-0">
+												<strong>Así saldrá en el XML:</strong>
+												<pre class="mb-0 mt-2">&lt;infoAdicional&gt;
+    &lt;campoAdicional nombre="<?php echo $h($sriConfig['etiqueta_ruc_proveedor'] ?? 'RUC Proveedor'); ?>"&gt;<?php echo $h($sriConfig['ruc_proveedor']); ?>&lt;/campoAdicional&gt;
+&lt;/infoAdicional&gt;</pre>
+											</div>
+										</div>
+										<?php } ?>
 									</div>
 								</div>
 								<div class="card-footer text-right">

@@ -2,6 +2,10 @@
 	use app\controllers\facturasController;
 
 	$insFactura = new facturasController();
+
+	// Interruptor de mantenimiento del modulo (facturacionConfig).
+	require_once "app/views/inc/facturacion_servicio.php";
+	if(!facturacionServicioDisponible($insFactura, 'Facturas emitidas')){ return; }
 	$limpiar = static function($valor) use ($insFactura){ return $insFactura->limpiarCadena($valor); };
 	$fechaInicio = isset($_POST['factura_fecha_inicio']) ? $limpiar($_POST['factura_fecha_inicio']) : '';
 	$fechaFin = isset($_POST['factura_fecha_fin']) ? $limpiar($_POST['factura_fecha_fin']) : '';

@@ -8,6 +8,7 @@
 
 	class facturasController extends mainModel{
 
+		const MENSAJE_MANTENIMIENTO_SRI = 'El servicio de facturación electrónica está temporalmente fuera de servicio por mantenimiento.';
 
 		/*  funciones para el manejo de facturas */
 		public function listarSedeFacturas($sedeid, $rolid = null, $usuario = null){
@@ -385,6 +386,13 @@
 				'iva_tarifa_default' => (float)(getenv('SENDERO_SRI_IVA_TARIFA') !== false ? getenv('SENDERO_SRI_IVA_TARIFA') : 0),
 				'valores_incluyen_iva' => true,
 				'secuencial_inicio' => 1,
+				// Interruptor de mantenimiento del modulo (ver estadoServicioFacturacion).
+				'servicio_activo' => true,
+				'mantenimiento_mensaje' => '',
+				// RUC del proveedor del sistema de facturacion (resolucion
+				// NAC-DGERCGC26-00000027 art. 5). Vacio = no se agrega al XML.
+				'ruc_proveedor' => '',
+				'etiqueta_ruc_proveedor' => 'RUC Proveedor',
 				'emisor' => [
 					'ruc' => '', 'razon_social' => '', 'nombre_comercial' => '',
 					'direccion_matriz' => '', 'direccion_establecimiento' => '',
@@ -486,6 +494,7 @@
 		 */
 		private function configEmisorDesdeBd(){
 			try{
+				$this->asegurarColumnasConfigSri();
 				$stmt = $this->ejecutarConsulta("SELECT * FROM facturas_electronicas_config WHERE config_lock = 'X' LIMIT 1");
 				$row = $stmt->fetch();
 			}catch(\Throwable $e){
@@ -501,6 +510,13 @@
 				'forma_pago_default' => (string)$row['forma_pago_default'],
 				'valores_incluyen_iva' => (bool)((int)$row['valores_incluyen_iva']),
 				'secuencial_inicio' => max(1, (int)($row['secuencial_inicio'] ?? 1)),
+				// Si la columna aun no existe, el servicio se considera activo.
+				'servicio_activo' => !array_key_exists('servicio_activo', $row) || (int)$row['servicio_activo'] === 1,
+				'mantenimiento_mensaje' => trim((string)($row['mantenimiento_mensaje'] ?? '')),
+				'ruc_proveedor' => trim((string)($row['ruc_proveedor'] ?? '')),
+				'etiqueta_ruc_proveedor' => trim((string)($row['etiqueta_ruc_proveedor'] ?? '')) !== ''
+					? trim((string)$row['etiqueta_ruc_proveedor'])
+					: 'RUC Proveedor',
 				'emisor' => [
 					'ruc' => (string)$row['ruc'],
 					'razon_social' => (string)$row['razon_social'],
@@ -544,6 +560,172 @@
 			$valor = trim(strip_tags((string)$valor));
 			$valor = preg_replace('/\s+/', ' ', $valor);
 			return function_exists('mb_substr') ? mb_substr($valor, 0, $limite, 'UTF-8') : substr($valor, 0, $limite);
+		}
+
+		/**
+		 * Informacion adicional del comprobante.
+		 *
+		 * Agrega el RUC del proveedor del sistema de facturacion electronica,
+		 * exigido por el articulo 5 de la resolucion NAC-DGERCGC26-00000027
+		 * (R.O. 335, 5to suplemento, 28-jul-2026) a quienes emiten con un
+		 * sistema provisto por un tercero.
+		 *
+		 * El nombre del campoAdicional sale de la configuracion y no del
+		 * codigo: el literal exacto lo define la Ficha Tecnica de Comprobantes
+		 * Electronicos vigente, y dejarlo fijo obligaria a desplegar si el SRI
+		 * lo precisa distinto. Sin RUC configurado, el comprobante sale igual
+		 * que antes.
+		 */
+		private function infoAdicionalFacturaSri(array $campos){
+			$config = $this->sriConfig();
+			$ruc = trim((string)($config['ruc_proveedor'] ?? ''));
+
+			if($ruc !== ''){
+				$etiqueta = trim((string)($config['etiqueta_ruc_proveedor'] ?? ''));
+				if($etiqueta === ''){
+					$etiqueta = 'RUC Proveedor';
+				}
+				$campos[$etiqueta] = $ruc;
+			}
+
+			return array_filter($campos, static function($valor){
+				return $valor !== '' && $valor !== null;
+			});
+		}
+
+		/*==================================================================
+		  INTERRUPTOR DE MANTENIMIENTO DEL MODULO
+		  ------------------------------------------------------------------
+		  Con el servicio abajo no se generan ni se envian facturas al SRI y
+		  las pantallas del modulo muestran un aviso. La configuracion sigue
+		  accesible a proposito: es desde donde se vuelve a levantar.
+		==================================================================*/
+
+		/** Estado del servicio: si esta activo y que aviso mostrar. */
+		public function estadoServicioFacturacion(){
+			$config = $this->sriConfig();
+			$propio = trim((string)($config['mantenimiento_mensaje'] ?? ''));
+
+			return [
+				'activo' => !array_key_exists('servicio_activo', $config) || (bool)$config['servicio_activo'],
+				'mensaje' => $propio !== '' ? $propio : self::MENSAJE_MANTENIMIENTO_SRI,
+				'mensaje_propio' => $propio,
+			];
+		}
+
+		public function servicioFacturacionActivo(){
+			$estado = $this->estadoServicioFacturacion();
+			return $estado['activo'];
+		}
+
+		public function mensajeMantenimientoFacturacion(){
+			$estado = $this->estadoServicioFacturacion();
+			return $estado['mensaje'];
+		}
+
+		/** Respuesta estandar al intentar operar con el servicio abajo. */
+		public function respuestaServicioFacturacionAbajo(){
+			return $this->respuestaJson(
+				'simple',
+				'Facturación en mantenimiento',
+				$this->mensajeMantenimientoFacturacion(),
+				'warning'
+			);
+		}
+
+		/** Baja o levanta el servicio desde la pantalla de configuracion. */
+		public function cambiarEstadoServicioFacturacion(){
+			if(!$this->autorizadoConfigSri()){
+				return $this->respuestaJson('simple', 'Acceso restringido', 'Solo un usuario administrador puede cambiar el estado del servicio de facturacion.', 'error');
+			}
+
+			$activo  = ((string)($_POST['servicio_activo'] ?? '1') === '1');
+			$mensaje = $this->textoConfigSri($_POST['mantenimiento_mensaje'] ?? '', 300);
+
+			try{
+				$this->asegurarColumnasConfigSri();
+
+				$existe = (int)$this->ejecutarConsulta(
+					"SELECT COUNT(*) FROM facturas_electronicas_config WHERE config_lock = 'X'"
+				)->fetchColumn();
+
+				if($existe === 0){
+					return $this->respuestaJson(
+						'simple',
+						'Configuración incompleta',
+						'Guarde primero los datos del emisor: el interruptor se almacena junto con esa configuración.',
+						'warning'
+					);
+				}
+
+				$this->ejecutarConsulta(
+					"UPDATE facturas_electronicas_config
+					    SET servicio_activo = :activo,
+					        mantenimiento_mensaje = :mensaje,
+					        updated_by = :usuario
+					  WHERE config_lock = 'X'",
+					[
+						':activo'  => $activo ? 1 : 0,
+						':mensaje' => $mensaje,
+						':usuario' => (int)($_SESSION['usuarioid'] ?? 0) ?: null,
+					]
+				);
+			}catch(\Throwable $e){
+				return $this->respuestaJson(
+					'simple',
+					'No se pudo cambiar el estado',
+					'Ocurrió un error al guardar: '.$e->getMessage(),
+					'error'
+				);
+			}
+
+			return $this->respuestaJson(
+				'recargar',
+				$activo ? 'Servicio activado' : 'Servicio en mantenimiento',
+				$activo
+					? 'La facturación electrónica vuelve a estar disponible.'
+					: 'Se bajó el servicio. Las pantallas de facturación mostrarán el aviso de mantenimiento.',
+				'success'
+			);
+		}
+
+		/**
+		 * Columnas de facturas_electronicas_config que se agregaron despues de
+		 * la creacion original de la tabla (ver migracion 007). Se crean solas
+		 * para que el modulo funcione aunque la migracion no se haya corrido.
+		 */
+		private function asegurarColumnasConfigSri(){
+			static $verificado = false;
+			if($verificado){
+				return;
+			}
+			$verificado = true;
+			$this->asegurarColumnaConfigSri('servicio_activo', "TINYINT(1) NOT NULL DEFAULT 1 AFTER config_lock");
+			$this->asegurarColumnaConfigSri('mantenimiento_mensaje', "VARCHAR(300) NOT NULL DEFAULT '' AFTER servicio_activo");
+			$this->asegurarColumnaConfigSri('ruc_proveedor', "VARCHAR(13) NOT NULL DEFAULT '' AFTER contribuyente_rimpe");
+			$this->asegurarColumnaConfigSri('etiqueta_ruc_proveedor', "VARCHAR(300) NOT NULL DEFAULT 'RUC Proveedor' AFTER ruc_proveedor");
+		}
+
+		private function asegurarColumnaConfigSri($columna, $definicion){
+			if(!preg_match('/^[a-z_]+$/', (string)$columna)){
+				return;
+			}
+			try{
+				$conexion = $this->conectar();
+				$stmt = $conexion->prepare(
+					"SELECT COUNT(*)
+					   FROM information_schema.COLUMNS
+					  WHERE TABLE_SCHEMA = DATABASE()
+					    AND TABLE_NAME = 'facturas_electronicas_config'
+					    AND COLUMN_NAME = :columna"
+				);
+				$stmt->execute([':columna' => $columna]);
+				if((int)$stmt->fetchColumn() === 0){
+					$conexion->exec("ALTER TABLE facturas_electronicas_config ADD COLUMN ".$columna." ".$definicion);
+				}
+			}catch(\Throwable $e){
+				// Si el hosting no permite ALTER, la migracion SQL deja una ruta manual.
+			}
 		}
 
         private function valorNoAplicaSri($valor){
@@ -887,6 +1069,19 @@
 				return $this->respuestaJson('simple', 'Forma de pago no valida', 'Seleccione una forma de pago del catalogo SRI.', 'error');
 			}
 
+			/* RUC del proveedor del sistema de facturacion: resolucion
+			   NAC-DGERCGC26-00000027 art. 5. Es opcional (vacio = el emisor no
+			   usa un sistema de terceros), pero si se ingresa debe ser un RUC. */
+			$rucProveedorIngresado = trim((string)($_POST['ruc_proveedor'] ?? ''));
+			$rucProveedor = preg_replace('/\D+/', '', $rucProveedorIngresado);
+			if($rucProveedorIngresado !== '' && !preg_match('/^\d{13}$/', $rucProveedor)){
+				return $this->respuestaJson('simple', 'RUC del proveedor invalido', 'El RUC del proveedor del sistema de facturacion debe tener 13 digitos. Dejelo vacio si no emite con un sistema de terceros.', 'warning');
+			}
+			$etiquetaRucProveedor = $this->textoConfigSri($_POST['etiqueta_ruc_proveedor'] ?? '', 300);
+			if($etiquetaRucProveedor === ''){
+				$etiquetaRucProveedor = 'RUC Proveedor';
+			}
+
 			$local = [
 				'ambiente' => $ambiente,
 				'iva_tarifa_default' => (float)$iva,
@@ -931,6 +1126,8 @@
 				'contribuyente_especial' => $em['contribuyente_especial'],
 				'agente_retencion' => $em['agente_retencion'],
 				'contribuyente_rimpe' => $em['contribuyente_rimpe'],
+				'ruc_proveedor' => $rucProveedor,
+				'etiqueta_ruc_proveedor' => $etiquetaRucProveedor,
 			]);
 
 			if(!$guardado){
@@ -943,6 +1140,7 @@
 		/** Upsert de la fila unica de configuracion del emisor en la BD. */
 		private function guardarConfigEmisorEnBd(array $d){
 			try{
+				$this->asegurarColumnasConfigSri();
 				$conexion = $this->conectar();
 				$stmt = $conexion->prepare(
 					"INSERT INTO facturas_electronicas_config
@@ -950,9 +1148,9 @@
 						 valores_incluyen_iva, secuencial_inicio, ruc, razon_social, nombre_comercial, direccion_matriz,
 						 direccion_establecimiento, codigo_establecimiento, punto_emision,
 						 obligado_contabilidad, contribuyente_especial, agente_retencion,
-						 contribuyente_rimpe, updated_by)
+						 contribuyente_rimpe, ruc_proveedor, etiqueta_ruc_proveedor, updated_by)
 					 VALUES ('X', :ambiente, :tipo_emision, :iva, :fp, :vii, :sini, :ruc, :rs, :nc, :dm, :de,
-						 :ce, :pe, :oc, :cesp, :ar, :rimpe, :uby)
+						 :ce, :pe, :oc, :cesp, :ar, :rimpe, :rucprov, :etiqprov, :uby)
 					 ON DUPLICATE KEY UPDATE
 						 ambiente=VALUES(ambiente), tipo_emision=VALUES(tipo_emision),
 						 iva_tarifa_default=VALUES(iva_tarifa_default), forma_pago_default=VALUES(forma_pago_default),
@@ -963,6 +1161,7 @@
 						 obligado_contabilidad=VALUES(obligado_contabilidad),
 						 contribuyente_especial=VALUES(contribuyente_especial),
 						 agente_retencion=VALUES(agente_retencion), contribuyente_rimpe=VALUES(contribuyente_rimpe),
+						 ruc_proveedor=VALUES(ruc_proveedor), etiqueta_ruc_proveedor=VALUES(etiqueta_ruc_proveedor),
 						 updated_by=VALUES(updated_by)"
 				);
 				return $stmt->execute([
@@ -971,7 +1170,9 @@
 					':rs'=>$d['razon_social'], ':nc'=>$d['nombre_comercial'], ':dm'=>$d['direccion_matriz'],
 					':de'=>$d['direccion_establecimiento'], ':ce'=>$d['codigo_establecimiento'], ':pe'=>$d['punto_emision'],
 					':oc'=>$d['obligado_contabilidad'], ':cesp'=>$d['contribuyente_especial'], ':ar'=>$d['agente_retencion'],
-					':rimpe'=>$d['contribuyente_rimpe'], ':uby'=>($_SESSION['usuarioid'] ?? null),
+					':rimpe'=>$d['contribuyente_rimpe'],
+					':rucprov'=>$d['ruc_proveedor'], ':etiqprov'=>$d['etiqueta_ruc_proveedor'],
+					':uby'=>($_SESSION['usuarioid'] ?? null),
 				]);
 			}catch(\Throwable $e){
 				return false;
@@ -1967,7 +2168,7 @@
                 ],
                 'detalles'=>$detalles,
                 'pagos'=>$pagos,
-                'info_adicional'=>array_filter([
+                'info_adicional'=>$this->infoAdicionalFacturaSri([
                     'Email'=>$factura['cliente_email'] ?? '',
                     'Telefono'=>$factura['cliente_telefono'] ?? ''
                 ])
@@ -2499,7 +2700,7 @@
 					'cliente'=>['tipo_identificacion'=>$tipoIdentificacion, 'identificacion'=>$this->normalizarTextoSri($representante['repre_identificacion'], 20), 'razon_social'=>$this->normalizarTextoSri($representante['representante'], 300), 'direccion'=>$this->normalizarTextoSri($representante['repre_direccion'], 300)],
 					'totales'=>['subtotal'=>$subtotal, 'descuento'=>0.00, 'total'=>$total, 'impuestos'=>[['codigo'=>$ivaInfo['codigo'], 'codigo_porcentaje'=>$ivaInfo['codigo_porcentaje'], 'base_imponible'=>$subtotal, 'tarifa'=>$ivaInfo['porcentaje'], 'valor'=>$ivaTotal]]],
 					'detalles'=>$detalles, 'pagos'=>[['forma_pago'=>$formaPago, 'total'=>$total]],
-					'info_adicional'=>['Email'=>$representante['repre_correo'], 'Telefono'=>$representante['repre_celular'], 'Generado por'=>$_SESSION['usuario'] ?? 'Sistema']
+					'info_adicional'=>$this->infoAdicionalFacturaSri(['Email'=>$representante['repre_correo'], 'Telefono'=>$representante['repre_celular'], 'Generado por'=>$_SESSION['usuario'] ?? 'Sistema'])
 				];
 				$xml = $service->generarXMLFactura($datosFactura);
 				$validacionXml = $service->validarXML($xml);

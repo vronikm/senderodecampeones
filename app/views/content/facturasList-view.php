@@ -2,6 +2,10 @@
 	use app\controllers\facturasController;
 	$insFactura = new facturasController();
 
+	// Interruptor de mantenimiento del modulo (facturacionConfig).
+	require_once "app/views/inc/facturacion_servicio.php";
+	if(!facturacionServicioDisponible($insFactura, 'Facturas')){ return; }
+
 	if(isset($_POST['alumno_sedeid'])){
 		$alumno_sedeid = $insFactura->limpiarCadena($_POST['alumno_sedeid']);
 	} ELSE{

@@ -8,6 +8,30 @@
 
 	$insAlumno  = new facturasController();
 
+	// Interruptor de mantenimiento: con el servicio abajo no se genera ni se
+	// envia nada al SRI. Se dejan pasar solo los modulos de configuracion,
+	// que son los que permiten preparar el servicio y volver a levantarlo.
+	$moduloFacturas = (string)($_POST['modulo_facturas'] ?? $_GET['modulo_facturas'] ?? '');
+	$modulosConfiguracion = [
+		'GUARDAR_CONFIG_SRI',
+		'SUBIR_CERTIFICADO_SRI',
+		'PROBAR_CERTIFICADO_SRI',
+		'PROBAR_CONEXION_SRI',
+		'CAMBIAR_ESTADO_SERVICIO_SRI',
+	];
+
+	if($moduloFacturas !== '' && !in_array($moduloFacturas, $modulosConfiguracion, true) && !$insAlumno->servicioFacturacionActivo()){
+		http_response_code(503);
+		if(isset($_GET['modulo_facturas'])){
+			// DESCARGAR_XML y VER_RIDE devuelven archivos, no JSON.
+			header('Content-Type: text/plain; charset=UTF-8');
+			echo $insAlumno->mensajeMantenimientoFacturacion();
+		}else{
+			echo $insAlumno->respuestaServicioFacturacionAbajo();
+		}
+		exit();
+	}
+
 	if(isset($_GET['modulo_facturas'])){
 		$modulo = $_GET['modulo_facturas'];
 		$facturaId = $_GET['factura_id'] ?? 0;
@@ -40,6 +64,11 @@
 
 		if($_POST['modulo_facturas']=="GUARDAR_CONFIG_SRI"){
 			echo $insAlumno->guardarConfiguracionSri();
+			exit();
+		}
+
+		if($_POST['modulo_facturas']=="CAMBIAR_ESTADO_SERVICIO_SRI"){
+			echo $insAlumno->cambiarEstadoServicioFacturacion();
 			exit();
 		}
 
