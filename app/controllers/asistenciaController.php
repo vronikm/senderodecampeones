@@ -1823,6 +1823,196 @@
 			}
 			
 			return json_encode($eventos);
-		} 
+		}
+
+		/*==================================================================
+		  CONSULTA MENSUAL DE ASISTENCIAS (vista asistenciaList)
+		  ------------------------------------------------------------------
+		  Un usuario que no es administrador (rol 1/2) solo ve las sedes que
+		  tiene asignadas en seguridad_usuario_sede; la restriccion va en el
+		  SQL, no solo en el combo, para que no se salte cambiando el POST.
+		==================================================================*/
+
+		private function esAdminAsistencia($rolid){
+			return in_array((int)$rolid, [1, 2], true);
+		}
+
+		/** Sedes visibles para el usuario como <option>. */
+		public function listarSedeAsistencia($sedeid, $rolid, $usuario){
+			if($this->esAdminAsistencia($rolid)){
+				$datos = $this->ejecutarConsulta("SELECT sede_id, sede_nombre FROM general_sede ORDER BY sede_nombre");
+			}else{
+				$datos = $this->ejecutarConsulta(
+					"SELECT S.sede_id, S.sede_nombre
+					   FROM general_sede S
+					  INNER JOIN seguridad_usuario_sede US ON US.usuariosede_sedeid = S.sede_id
+					  INNER JOIN seguridad_usuario U ON U.usuario_id = US.usuariosede_usuarioid
+					  WHERE U.usuario_usuario = :usuario
+					  ORDER BY S.sede_nombre",
+					[':usuario' => (string)$usuario]
+				);
+			}
+
+			$option = '';
+			foreach($datos->fetchAll() as $rows){
+				$sel = ((string)$sedeid === (string)$rows['sede_id']) ? ' selected' : '';
+				$option .= '<option value="'.(int)$rows['sede_id'].'"'.$sel.'>'.htmlspecialchars((string)$rows['sede_nombre'], ENT_QUOTES, 'UTF-8').'</option>';
+			}
+			return $option;
+		}
+
+		/** Horarios activos (de la sede elegida, si hay) como <option>. */
+		public function listarOptionHorarioAsistencia($horarioid, $sedeid){
+			$sql = "SELECT horario_id, horario_nombre, horario_detalle
+					  FROM asistencia_horario
+					 WHERE horario_estado <> 'E'";
+			$params = [];
+			if((int)$sedeid > 0){
+				$sql .= " AND horario_sedeid = :sede";
+				$params[':sede'] = (int)$sedeid;
+			}
+			$sql .= " ORDER BY horario_nombre, horario_detalle";
+
+			$option = '';
+			foreach($this->ejecutarConsulta($sql, $params)->fetchAll() as $rows){
+				$sel = ((string)$horarioid === (string)$rows['horario_id']) ? ' selected' : '';
+				$texto = $rows['horario_nombre'].' | '.$rows['horario_detalle'];
+				$option .= '<option value="'.(int)$rows['horario_id'].'"'.$sel.'>'.htmlspecialchars($texto, ENT_QUOTES, 'UTF-8').'</option>';
+			}
+			return $option;
+		}
+
+		/** Anios con asistencias registradas (para el combo), del mas reciente al mas antiguo. */
+		public function aniosConAsistencia(){
+			$anios = $this->ejecutarConsulta(
+				"SELECT DISTINCT LEFT(asistencia_aniomes, 4) AS anio FROM asistencia_asistencia ORDER BY anio DESC"
+			)->fetchAll(\PDO::FETCH_COLUMN);
+			$actual = date('Y');
+			if(!in_array($actual, $anios, true)){
+				array_unshift($anios, $actual);
+			}
+			return $anios;
+		}
+
+		/**
+		 * Dias del mes en que no se entrena: fines de semana y, si existe la
+		 * tabla asistencia_feriados, los feriados activos. Si la tabla no
+		 * existe en el servidor, la vista funciona igual sin marcar feriados.
+		 */
+		public function diasNoLaborablesAsistencia($anio, $mes){
+			$anio = (int)$anio;
+			$mes = (int)$mes;
+			$total = (int)date('t', mktime(0, 0, 0, $mes, 1, $anio));
+			$dias = [];
+
+			for($dia = 1; $dia <= $total; $dia++){
+				if((int)date('N', mktime(0, 0, 0, $mes, $dia, $anio)) >= 6){
+					$dias[$dia] = 'Fin de semana';
+				}
+			}
+
+			try{
+				$feriados = $this->ejecutarConsulta(
+					"SELECT DAY(feriado_fecha) AS dia
+					   FROM asistencia_feriados
+					  WHERE YEAR(feriado_fecha) = :anio AND MONTH(feriado_fecha) = :mes AND feriado_activo = 1",
+					[':anio' => $anio, ':mes' => $mes]
+				)->fetchAll(\PDO::FETCH_COLUMN);
+				foreach($feriados as $dia){
+					$dias[(int)$dia] = 'Feriado';
+				}
+			}catch(\Throwable $e){
+				// Sin tabla de feriados: solo se marcan los fines de semana.
+			}
+
+			return $dias;
+		}
+
+		/**
+		 * Asistencia mensual por alumno.
+		 *
+		 * El porcentaje se calcula sobre las clases registradas para cada
+		 * alumno (P + F), no sobre todos los dias habiles del mes: cada alumno
+		 * entrena solo los dias de su horario, y dividir por ~22 dias haria que
+		 * quien nunca falta apareciera con 35%. Las faltas justificadas (J) se
+		 * muestran aparte y no restan porcentaje.
+		 *
+		 * Devuelve ['filas' => [...], 'resumen' => [...]].
+		 */
+		public function consultarAsistenciaMensual($anio, $mes, $sedeid, $horarioid, $rolid, $usuario){
+			$anio = (int)$anio;
+			$mes = (int)$mes;
+			$dias = (int)date('t', mktime(0, 0, 0, $mes, 1, $anio));
+
+			$sql = "SELECT al.alumno_id, al.alumno_identificacion,
+						   CONCAT_WS(' ', al.alumno_apellidopaterno, al.alumno_apellidomaterno, al.alumno_primernombre, al.alumno_segundonombre) AS nombre_completo,
+						   TIMESTAMPDIFF(YEAR, al.alumno_fechanacimiento, CURDATE()) AS alumno_edad,
+						   S.sede_nombre, a.*
+					  FROM asistencia_asistencia a
+					 INNER JOIN sujeto_alumno al ON al.alumno_id = a.asistencia_alumnoid
+					  LEFT JOIN general_sede S ON S.sede_id = al.alumno_sedeid
+					 WHERE a.asistencia_aniomes = :aniomes";
+			$params = [':aniomes' => sprintf('%04d%02d', $anio, $mes)];
+
+			if((int)$sedeid > 0){
+				$sql .= " AND al.alumno_sedeid = :sede";
+				$params[':sede'] = (int)$sedeid;
+			}
+			if((int)$horarioid > 0){
+				$sql .= " AND EXISTS (SELECT 1 FROM asistencia_asignahorario h
+									   WHERE h.asignahorario_alumnoid = al.alumno_id
+										 AND h.asignahorario_horarioid = :horario)";
+				$params[':horario'] = (int)$horarioid;
+			}
+			if(!$this->esAdminAsistencia($rolid)){
+				$sql .= " AND EXISTS (SELECT 1 FROM seguridad_usuario_sede US
+									   INNER JOIN seguridad_usuario U ON U.usuario_id = US.usuariosede_usuarioid
+									   WHERE US.usuariosede_sedeid = al.alumno_sedeid
+										 AND U.usuario_usuario = :usuario)";
+				$params[':usuario'] = (string)$usuario;
+			}
+			$sql .= " ORDER BY al.alumno_apellidopaterno, al.alumno_apellidomaterno, al.alumno_primernombre";
+
+			$filas = [];
+			$resumen = ['alumnos' => 0, 'P' => 0, 'F' => 0, 'J' => 0, 'porcentaje' => null, 'riesgo' => 0];
+
+			foreach($this->ejecutarConsulta($sql, $params)->fetchAll() as $row){
+				$marcas = [];
+				$conteo = ['P' => 0, 'F' => 0, 'J' => 0];
+				for($d = 1; $d <= 31; $d++){
+					$valor = $d <= $dias ? (string)($row['asistencia_D'.str_pad($d, 2, '0', STR_PAD_LEFT)] ?? '') : '';
+					$marcas[$d] = isset($conteo[$valor]) ? $valor : '';
+					if(isset($conteo[$valor])){
+						$conteo[$valor]++;
+					}
+				}
+				$clases = $conteo['P'] + $conteo['F'];
+				$porcentaje = $clases > 0 ? round($conteo['P'] * 100 / $clases, 1) : null;
+
+				$filas[] = [
+					'alumno_id' => (int)$row['alumno_id'],
+					'identificacion' => (string)$row['alumno_identificacion'],
+					'nombre' => trim(preg_replace('/\s+/', ' ', (string)$row['nombre_completo'])),
+					'edad' => $row['alumno_edad'],
+					'sede' => (string)($row['sede_nombre'] ?? ''),
+					'marcas' => $marcas,
+					'conteo' => $conteo,
+					'porcentaje' => $porcentaje,
+				];
+
+				$resumen['alumnos']++;
+				foreach($conteo as $k => $v){
+					$resumen[$k] += $v;
+				}
+				if($porcentaje !== null && $porcentaje < 75){
+					$resumen['riesgo']++;
+				}
+			}
+
+			$totalClases = $resumen['P'] + $resumen['F'];
+			$resumen['porcentaje'] = $totalClases > 0 ? round($resumen['P'] * 100 / $totalClases, 1) : null;
+
+			return ['filas' => $filas, 'resumen' => $resumen];
+		}
 	}
 			

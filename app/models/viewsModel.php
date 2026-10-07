@@ -28,7 +28,7 @@
 						  ,"ingresosLugarEntrenamiento","estadisticas","reporteIngresosMorames","facturasList","facturasEmitidas"
 						  ,"facturasNew","facturacionConfig","carnetList","carnetFoto","carnetConf","carnetPDF","carnetReimpresionPDF"
 						  ,"carnetFotoPDF","cumpleaniosList","cumpleaniosTarjeta","importarAlumnos","inscripcionEnlace"
-						  ,"consentimientoList","inscripcionPendientes"];
+						  ,"consentimientoList","inscripcionPendientes","asistenciaList"];
 
 			if(in_array($vista, $listaBlanca)){
 				if(is_file("./app/views/content/".$vista."-view.php")){
