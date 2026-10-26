@@ -26,7 +26,7 @@ if(isset($_POST['modulo_carnet'])) {
             
         case 'imprimir_carnetspendientes':
             // Obtener carnets pendientes
-            $resultado = $insCarnet->carnetPendientesImpresion();
+            $resultado = $insCarnet->carnetPendientesImpresion($insCarnet->sedeSeleccionadaCarnet());
             
             // Retornar JSON con el total
             if(isset($resultado[0]['total'])) {

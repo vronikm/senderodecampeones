@@ -28,14 +28,25 @@ $(function () {
 
     // Cambiar encabezado "Condicion" por "Impresion" en esta vista.
     $('#example1 thead th').eq(4).text('Impresion');
-    
+
+    // Sede a emitir: al cambiarla se recarga la lista de esa sede.
+    var sedeCarnetId = (typeof SEDE_CARNET_ID !== 'undefined') ? SEDE_CARNET_ID : 0;
+    var sedeCarnetNombre = (typeof SEDE_CARNET_NOMBRE !== 'undefined') ? SEDE_CARNET_NOMBRE : 'Todas las sedes';
+    if ($.fn.select2) {
+        $('#carnet_sedeid').select2({ theme: 'bootstrap4', width: '100%' });
+    }
+    $('#carnet_sedeid').on('change', function() {
+        $('#formSedeCarnet').trigger('submit');
+    });
+
     // ✅ FUNCIÓN PARA CONSULTAR CARNETS PENDIENTES VÍA AJAX
     function consultarCarnetsPendientes(callback) {
         $.ajax({
             url: APP_URL + 'app/ajax/carnetAjax.php',
             type: 'POST',
             data: {
-                modulo_carnet: 'imprimir_carnetspendientes'
+                modulo_carnet: 'imprimir_carnetspendientes',
+                sedeid: sedeCarnetId
             },
             dataType: 'json',
             success: function(response) {
@@ -86,6 +97,7 @@ $(function () {
                             <p style="margin-top: 15px; font-size: 16px;">
                                 No hay carnets pendientes de impresión este mes
                             </p>
+                            <p style="font-size: 14px;"><strong>${$('<div>').text(sedeCarnetNombre).html()}</strong></p>
                             <p style="color: #6c757d; font-size: 14px;">
                                 Todos los carnets ya han sido generados
                             </p>
@@ -114,7 +126,11 @@ $(function () {
                     <hr style="margin: 12px 0;">
 
                     <p style="margin-bottom: 6px;">
-                        <i class="fas fa-file-pdf" style="color: #dc3545;"></i> 
+                        <i class="fas fa-map-marker-alt" style="color: #007bff;"></i>
+                        Sede: <strong>${$('<div>').text(sedeCarnetNombre).html()}</strong>
+                    </p>
+                    <p style="margin-bottom: 6px;">
+                        <i class="fas fa-file-pdf" style="color: #dc3545;"></i>
                         Se generará un archivo PDF
                     </p>
                     <p style="margin-bottom: 6px;">
@@ -174,7 +190,8 @@ $(function () {
                         url: APP_URL + 'app/ajax/carnetAjax.php',
                         type: 'POST',
                         data: {
-                            modulo_carnet: 'preparar_impresion_mensual'
+                            modulo_carnet: 'preparar_impresion_mensual',
+                            sedeid: sedeCarnetId
                         },
                         dataType: 'json',
                         success: function(response) {
